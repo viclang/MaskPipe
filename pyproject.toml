@@ -17,6 +17,11 @@ dependencies = [
     "schwifty"
 ]
 
+[project.optional-dependencies]
+presidio = [
+    "presidio-analyzer>=2.2",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/maskpipe"]
 
