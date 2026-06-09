@@ -48,17 +48,13 @@ def _valid_ssn(span: Span) -> bool:
         return False
 
     # Known test/reserved SSNs
-    if only_digits in ("078051120", "123456789"):
+    if only_digits in ("078051120", "123456789", "987654321"):
         return False
 
-    # Check delimiter consistency
+    # Delimiters must all be the same character (no mixing "-" and ".")
     non_digit_chars = [c for c in text if c not in "0123456789"]
     if non_digit_chars:
-        delimiters = set(non_digit_chars)
-        if len(delimiters) > 1:
-            return False
-        # All delimiters must be the same character
-        if len(non_digit_chars) != 3:
+        if len(set(non_digit_chars)) > 1:
             return False
 
     return True

@@ -78,10 +78,18 @@ class PresidioConverter:
     def _wrap_validator(self, recognizer: "PatternRecognizer") -> Optional[Callable[[Span], bool]]:
         from presidio_analyzer import PatternRecognizer as PR
 
-        if type(recognizer).validate_result is PR.validate_result:
+        # Presidio has two separate validation hooks that are both called in analyze():
+        # - validate_result: positive validation (returns True/False/None)
+        # - invalidate_result: negative validation (returns True to discard)
+        # They don't chain through each other, so we must call both.
+        has_validate = type(recognizer).validate_result is not PR.validate_result
+        has_invalidate = type(recognizer).invalidate_result is not PR.invalidate_result
+        if not has_validate and not has_invalidate:
             return None
 
         def _validator(span: Span, _r: "PatternRecognizer" = recognizer) -> bool:
+            if _r.invalidate_result(span.text):
+                return False
             result = _r.validate_result(span.text)
             return result if result is not None else True
 
