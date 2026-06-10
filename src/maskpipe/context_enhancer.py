@@ -70,12 +70,17 @@ class ContextEnhancer(Pipe):
         if not spans or not self._patterns:
             return doc
         
+        extended_text = doc.text
         if doc._.context_words:
-            extended_text = doc.text + " " + " ".join(doc._.context_words)
-            with self.nlp.select_pipes(disable=["recognizer", "context_enhancer", "conflict_resolver", "anonymizer"]):
-                extended_doc = self.nlp(extended_text)
-        else:
-            extended_doc = doc
+            extended_text += " " + " ".join(doc._.context_words)
+
+        with self.nlp.select_pipes(disable=["recognizer", "context_enhancer", "conflict_resolver", "anonymizer"]):
+            extended_doc = self.nlp(extended_text)
+
+        # Normalize lemmas to lowercase so LEMMA patterns match case-insensitively.
+        # This modifies only the matching copy — the original doc is untouched.
+        for token in extended_doc:
+            token.lemma_ = token.lemma_.lower()
 
         # Build matcher with all patterns
         matcher = Matcher(self.nlp.vocab)

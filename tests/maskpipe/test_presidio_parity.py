@@ -33,15 +33,22 @@ def _detect(nlp, text):
 
 
 # Valid SSNs — both implementations should detect these.
-# Note: hyphenated ("123-45-6789") and space-separated ("123 45 6789") formats
-# are NOT included — spaCy's English tokenizer splits on hyphens and spaces,
-# so neither implementation detects them via single-token patterns.
-# Dot-separated ("401.22.3456") works because spaCy keeps it as one token.
+# Dot-separated ("401.22.3456") is a single token in spaCy, so both detect it.
+# 9-digit no-separator is also a single token, so both detect it.
 VALID_SSNS = [
     "532431234",    # 9-digit, no separator
     "401223456",    # 9-digit, no separator
     "401.22.3456",  # dot-separated — single token in spaCy
     "532.43.1234",  # dot-separated — single token in spaCy
+]
+
+
+# Valid SSNs that both implementations detect via multi-token patterns.
+# PresidioConverter._translate_pattern expands [- .] separator classes into
+# explicit hyphen-token and adjacent-token alternatives.
+VALID_SSNS_MULTITOKEN = [
+    "532-43-1234",  # hyphen-separated
+    "401 22 3456",  # space-separated
 ]
 
 # Numbers that pass the regex but are rejected by BOTH validators.
@@ -106,3 +113,12 @@ def test_native_stricter_than_presidio(native_nlp, presidio_nlp, text):
     """Native maskpipe is stricter: rejects area codes 900-999 (Presidio does not)."""
     assert not _detect(native_nlp, text), f"native should reject: {text!r}"
     assert _detect(presidio_nlp, text), f"presidio should accept: {text!r}"
+
+
+@skip_no_presidio
+@pytest.mark.parametrize("text", VALID_SSNS_MULTITOKEN)
+def test_both_detect_multitoken_formats(native_nlp, presidio_nlp, text):
+    """Both detect hyphen/space-separated SSNs via multi-token patterns.
+    PresidioConverter expands [- .] separator classes into explicit token sequences."""
+    assert _detect(native_nlp, text), f"native missed: {text!r}"
+    assert _detect(presidio_nlp, text), f"presidio missed: {text!r}"

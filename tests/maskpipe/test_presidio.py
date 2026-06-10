@@ -40,7 +40,7 @@ def test_translate_context_uses_context_boost():
     assert result is not None
     assert len(result) == 1
     assert result[0]["score"] == 0.4
-    assert result[0]["pattern"] == [{"LOWER": {"IN": ["ssn", "social security"]}}]
+    assert result[0]["pattern"] == [{"LEMMA": {"IN": ["ssn", "social security"]}}]
 
 
 # --- Integration tests (require presidio-analyzer) ---

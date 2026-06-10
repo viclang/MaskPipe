@@ -3,9 +3,6 @@
 Recognizes SSN in formats: XXX-XX-XXXX, XXX XX XXXX, XXX.XX.XXXX
 Includes validation to reject invalid SSN ranges.
 """
-from collections import defaultdict
-from typing import List
-
 from spacy.tokens import Span
 
 from ..entity import Entity
@@ -63,20 +60,20 @@ def _valid_ssn(span: Span) -> bool:
 SSN = Entity(
     label="US_SSN",
     patterns=[
-        # Medium confidence: XXX-XX-XXXX with consistent delimiters
-        {
-            "score": 0.6,
-            "pattern": [
-                {"TEXT": {"REGEX": r"\b\d{3}[- .]\d{2}[- .]\d{4}\b"}},
-            ],
-        },
-        # Weak confidence: 9 consecutive digits
-        {
-            "score": 0.3,
-            "pattern": [
-                {"TEXT": {"REGEX": r"\b\d{9}\b"}},
-            ],
-        },
+        # XXX[- .]XX[- .]XXXX — single token for tokenizers that keep it together
+        # (e.g. nl/es/pt/trained models for hyphens; all tokenizers for dots)
+        {"score": 0.6, "pattern": [{"TEXT": {"REGEX": r"\b\d{3}[-.]\d{2}[-.]\d{4}\b"}}]},
+        # Multi-token: covers tokenizers that split on separators (en/de/fr for hyphens,
+        # pl for dots); OP "?" also handles space-separated (no separator token present)
+        {"score": 0.6, "pattern": [
+            {"TEXT": {"REGEX": r"\b\d{3}\b"}},
+            {"TEXT": {"IN": ["-", "."]}, "OP": "?"},
+            {"TEXT": {"REGEX": r"\b\d{2}\b"}},
+            {"TEXT": {"IN": ["-", "."]}, "OP": "?"},
+            {"TEXT": {"REGEX": r"\b\d{4}\b"}},
+        ]},
+        # XXXXXXXXX — 9 consecutive digits, no separator
+        {"score": 0.3, "pattern": [{"TEXT": {"REGEX": r"\b\d{9}\b"}}]},
     ],
     validator=_valid_ssn,
     context_patterns=[
