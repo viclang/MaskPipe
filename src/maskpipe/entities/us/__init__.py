@@ -3,10 +3,10 @@ from .bank_account import US_BANK_ACCOUNT
 from .driver_license import US_DRIVER_LICENSE
 from .itin import US_ITIN
 from .mbi import US_MBI
-from .medical_license import US_MEDICAL_LICENSE
+from .medical_license import MEDICAL_LICENSE as US_MEDICAL_LICENSE
 from .npi import US_NPI
 from .passport import US_PASSPORT
-from .ssn import SSN
+from .ssn import US_SSN as SSN
 
 __all__ = [
     "ABA_ROUTING_NUMBER",
