@@ -9,6 +9,7 @@ def _validator(span: Span) -> bool:
         ipaddress.ip_address(pattern_text)
     except ValueError:
         return False
+    return True
 
 IP_ADDRESS = Entity(
     label="IP_ADDRESS",

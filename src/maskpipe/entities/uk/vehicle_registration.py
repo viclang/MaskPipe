@@ -4,12 +4,12 @@ from typing import Tuple
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
 
-def _validator(span: Span) -> bool:
+def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
+    for search_string, replacement_string in replacement_pairs:
+        text = text.replace(search_string, replacement_string)
+    return text
 
-    def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-        for search_string, replacement_string in replacement_pairs:
-            text = text.replace(search_string, replacement_string)
-        return text
+def _validator(span: Span) -> bool:
     pattern_text = span.text
     sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
     if len(sanitized_value) == 7 and sanitized_value[:2].isalpha():

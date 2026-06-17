@@ -1,7 +1,7 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.us.medical_license_recognizer.MedicalLicenseRecognizer."""
-from spacy.tokens import Span
 from typing import List
 from typing import Tuple
+from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
 
 def _luhn_checksum(sanitized_value: str) -> bool:

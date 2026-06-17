@@ -4,12 +4,12 @@ from typing import Tuple
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
 
-def _validator(span: Span) -> bool:
+def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
+    for search_string, replacement_string in replacement_pairs:
+        text = text.replace(search_string, replacement_string)
+    return text
 
-    def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-        for search_string, replacement_string in replacement_pairs:
-            text = text.replace(search_string, replacement_string)
-        return text
+def _validator(span: Span) -> bool:
     pattern_text = span.text
     sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
     if len(sanitized_value) != 12:
@@ -17,7 +17,7 @@ def _validator(span: Span) -> bool:
     if not sanitized_value.isdigit():
         return False
     region_code = sanitized_value[:2]
-    if region_code not in {'13', '19', '21', '24', '17', '23', '22', '26', '20', '12', '16', '18', '14', '11', '25', '15', '28'}:
+    if region_code not in {'20', '14', '19', '11', '26', '15', '23', '25', '28', '18', '21', '17', '12', '13', '24', '16', '22'}:
         return False
     return True
 

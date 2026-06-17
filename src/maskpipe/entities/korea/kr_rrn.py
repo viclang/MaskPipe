@@ -4,24 +4,24 @@ from typing import Tuple
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
 
+def _validate_region_code(region_code: int) -> bool:
+    return bool(True if 0 <= region_code <= 95 else False)
+
+def _compute_checksum(rn: str) -> int:
+    weights = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5]
+    return sum((int(rn[i]) * weights[i] for i in range(12)))
+
+def _validate_checksum(rrn: str) -> bool:
+    digit_sum = _compute_checksum(rrn)
+    checksum = (11 - digit_sum % 11) % 10
+    return checksum == int(rrn[12])
+
+def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
+    for search_string, replacement_string in replacement_pairs:
+        text = text.replace(search_string, replacement_string)
+    return text
+
 def _validator(span: Span) -> bool:
-
-    def _validate_region_code(region_code: int) -> bool:
-        return bool(True if 0 <= region_code <= 95 else False)
-
-    def _compute_checksum(rn: str) -> int:
-        weights = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5]
-        return sum((int(rn[i]) * weights[i] for i in range(12)))
-
-    def _validate_checksum(rrn: str) -> bool:
-        digit_sum = _compute_checksum(rrn)
-        checksum = (11 - digit_sum % 11) % 10
-        return checksum == int(rrn[12])
-
-    def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-        for search_string, replacement_string in replacement_pairs:
-            text = text.replace(search_string, replacement_string)
-        return text
     pattern_text = span.text
     sanitized_value = _sanitize_value(pattern_text, [('-', '')])
     if len(sanitized_value) != 13:

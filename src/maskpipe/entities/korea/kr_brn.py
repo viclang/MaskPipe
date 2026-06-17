@@ -4,24 +4,24 @@ from typing import Tuple
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
 
+def _validate_checksum(brn: str) -> bool:
+    digits = [int(d) for d in brn]
+    magic_keys = [1, 3, 7, 1, 3, 7, 1, 3, 5]
+    total_sum = 0
+    for i in range(8):
+        total_sum += digits[i] * magic_keys[i]
+    last_key_mul = digits[8] * magic_keys[8]
+    total_sum += last_key_mul // 10 + last_key_mul
+    remainder = total_sum % 10
+    check_digit = (10 - remainder) % 10
+    return check_digit == digits[9]
+
+def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
+    for search_string, replacement_string in replacement_pairs:
+        text = text.replace(search_string, replacement_string)
+    return text
+
 def _validator(span: Span) -> bool:
-
-    def _validate_checksum(brn: str) -> bool:
-        digits = [int(d) for d in brn]
-        magic_keys = [1, 3, 7, 1, 3, 7, 1, 3, 5]
-        total_sum = 0
-        for i in range(8):
-            total_sum += digits[i] * magic_keys[i]
-        last_key_mul = digits[8] * magic_keys[8]
-        total_sum += last_key_mul // 10 + last_key_mul
-        remainder = total_sum % 10
-        check_digit = (10 - remainder) % 10
-        return check_digit == digits[9]
-
-    def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-        for search_string, replacement_string in replacement_pairs:
-            text = text.replace(search_string, replacement_string)
-        return text
     pattern_text = span.text
     sanitized_value = _sanitize_value(pattern_text, [('-', '')])
     if len(sanitized_value) != 10:
