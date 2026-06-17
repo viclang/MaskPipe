@@ -46,7 +46,7 @@ def _validator(span: Span) -> bool:
             if _is_valid_format(pattern_text, ()):
                 result = True
             elif _is_valid_format(pattern_text.upper(), ()):
-                result = None
+                result = True
         return result
     except ValueError:
         logger.error('Failed to validate text %s', pattern_text)

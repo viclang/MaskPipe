@@ -11,7 +11,7 @@ from presidio_analyzer import PatternRecognizer
 
 from .ast_utils import deduplicate
 from .extraction import extract_instance_method
-from .source_cleanup import fix_blank_lines, fold_helpers_into_validator, remove_unused_imports
+from .source_cleanup import fix_blank_lines, fold_helpers_into_validator, normalize_bool_tristate, remove_unused_imports
 
 def _adapt_first_param_to_span(src: str, func_name: str) -> str:
     """Change func_name(original_param: str, ...) to func_name(span: Span, ...) and prepend original_param = span.text."""
@@ -47,6 +47,7 @@ def extract_validator(recognizer) -> tuple[str, list[str]] | tuple[None, None]:
         if has_validate:
             src, imports = extract_instance_method(recognizer, "validate_result", "_validator")
             src = _adapt_first_param_to_span(src, "_validator")
+            src = normalize_bool_tristate(src)
             if has_invalidate:
                 src = _inject_invalidate_check(src)
             helper_srcs.append(src)

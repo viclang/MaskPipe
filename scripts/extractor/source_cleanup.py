@@ -83,6 +83,7 @@ class _BoolReturnWrapper(ast.NodeTransformer):
     def visit_FunctionDef(self, node):
         return node  # don't recurse into nested functions
 
+
 def wrap_bool_returns(src: str) -> str:
     """Wrap return values in bool() for top-level functions annotated -> bool."""
     try:
@@ -97,6 +98,36 @@ def wrap_bool_returns(src: str) -> str:
         return ast.unparse(tree)
     except Exception:
         logger.exception("wrap_bool_returns failed")
+        return src
+
+
+def normalize_bool_tristate(src: str) -> str:
+    """Replace `= None` with `= True` in top-level -> bool functions.
+
+    Presidio's validate_result uses None as a tri-state "uncertain, don't reject" value.
+    In a bool validator, uncertain means the match passes, so None maps to True.
+    This pass must run after -> bool annotations are set (i.e. after _adapt_first_param_to_span).
+    """
+    try:
+        tree = ast.parse(src)
+        changed = False
+        for node in tree.body:
+            if not (isinstance(node, ast.FunctionDef)
+                    and isinstance(node.returns, ast.Name)
+                    and node.returns.id == 'bool'):
+                continue
+            for stmt in ast.walk(node):
+                if (isinstance(stmt, ast.Assign)
+                        and isinstance(stmt.value, ast.Constant)
+                        and stmt.value.value is None):
+                    stmt.value = ast.Constant(value=True)
+                    changed = True
+        if not changed:
+            return src
+        ast.fix_missing_locations(tree)
+        return ast.unparse(tree)
+    except Exception:
+        logger.exception("normalize_bool_tristate failed")
         return src
 
 class _CallSiteReplacer(ast.NodeTransformer):

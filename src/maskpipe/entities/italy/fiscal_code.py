@@ -22,7 +22,7 @@ def _validator(span: Span) -> bool:
     if check_value == control:
         result = True
     else:
-        result = None
+        result = True
     return result
 
 IT_FISCAL_CODE = Entity(
