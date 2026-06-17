@@ -3,12 +3,15 @@
 Change this file when presidio renames or restructures validate_result / invalidate_result.
 """
 import ast
+import logging
+
+logger = logging.getLogger(__name__)
 
 from presidio_analyzer import PatternRecognizer
 
 from .ast_utils import deduplicate
 from .extraction import extract_instance_method
-from .source_cleanup import fix_blank_lines
+from .source_cleanup import fix_blank_lines, fold_helpers_into_validator, remove_unused_imports
 
 def _adapt_first_param_to_span(src: str, func_name: str) -> str:
     """Change func_name(original_param: str, ...) to func_name(span: Span, ...) and prepend original_param = span.text."""
@@ -57,9 +60,12 @@ def extract_validator(recognizer) -> tuple[str, list[str]] | tuple[None, None]:
             )
             helper_srcs.append(wrapper)
     except Exception:
+        logger.exception("extract_validator failed for %s", type(recognizer).__name__)
         return None, None
 
-    return fix_blank_lines("\n\n".join(helper_srcs)), deduplicate(all_imports)
+    src = fix_blank_lines("\n\n".join(helper_srcs))
+    src = fold_helpers_into_validator(src)
+    return src, remove_unused_imports(src, deduplicate(all_imports))
 
 def _inject_invalidate_check(src: str) -> str:
     """Insert 'if _invalidate(text): return False' into _validator after the span.text assignment."""

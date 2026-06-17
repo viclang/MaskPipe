@@ -1,8 +1,13 @@
 """Generic AST transformers and import resolution. No presidio dependencies."""
 import ast
 import builtins
+import copy
 import inspect
+import logging
 import sys
+
+_BUILTINS = frozenset(dir(builtins))
+logger = logging.getLogger(__name__)
 
 def _is_presidio(obj) -> bool:
     mod = inspect.getmodule(obj)
@@ -66,7 +71,6 @@ class ArgumentSubstitutor(ast.NodeTransformer):
         self._substitutions = substitutions
 
     def visit_Name(self, node):
-        import copy
         if isinstance(node.ctx, ast.Load) and node.id in self._substitutions:
             return ast.copy_location(copy.deepcopy(self._substitutions[node.id]), node)
         return node
@@ -80,16 +84,14 @@ def local_names(func_def: ast.FunctionDef) -> set[str]:
 
 def free_names(func_def: ast.FunctionDef) -> set[str]:
     local = local_names(func_def)
-    builtin_names = set(dir(builtins))
     used = {
         n.id
         for n in ast.walk(func_def)
         if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)
     }
-    return used - local - builtin_names
+    return used - local - _BUILTINS
 
 def resolve_imports(names: set[str], globals_: dict) -> list[str]:
-    import logging
     imports = []
     for name in sorted(names):
         obj = globals_.get(name)

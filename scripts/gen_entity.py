@@ -122,7 +122,8 @@ def main() -> None:
     source = generate(recognizer, converter)
 
     if args.stdout:
-        print(source)
+        sys.stdout.buffer.write(source.encode("utf-8"))
+        sys.stdout.buffer.write(b"\n")
         return
 
     out = Path(args.out) if args.out else _default_out_path(recognizer)

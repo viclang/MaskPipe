@@ -1,24 +1,23 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.korea.kr_frn_recognizer.KrFrnRecognizer."""
-from spacy.tokens import Span
 from typing import List
 from typing import Tuple
-from typing import Optional
+from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
 
-def _validate_region_code(region_code: int) -> bool:
-    return bool(True if 0 <= region_code <= 95 else False)
-
-def _validate_checksum(frn: str) -> bool:
-    digit_sum = super()._compute_checksum(frn)
-    checksum = (13 - digit_sum % 11) % 10
-    return checksum == int(frn[12])
-
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
-
 def _validator(span: Span) -> bool:
+
+    def _validate_region_code(region_code: int) -> bool:
+        return bool(True if 0 <= region_code <= 95 else False)
+
+    def _validate_checksum(frn: str) -> bool:
+        digit_sum = super()._compute_checksum(frn)
+        checksum = (13 - digit_sum % 11) % 10
+        return checksum == int(frn[12])
+
+    def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
+        for search_string, replacement_string in replacement_pairs:
+            text = text.replace(search_string, replacement_string)
+        return text
     pattern_text = span.text
     sanitized_value = _sanitize_value(pattern_text, [('-', '')])
     if len(sanitized_value) != 13:

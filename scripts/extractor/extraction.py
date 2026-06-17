@@ -5,7 +5,12 @@ mutually recursive — each calls the extraction functions defined below them.
 """
 import ast
 import inspect
+import logging
 import textwrap
+
+from presidio_analyzer import RecognizerResult as _RC
+
+logger = logging.getLogger(__name__)
 
 from .ast_utils import (
     _is_presidio,
@@ -18,7 +23,7 @@ from .ast_utils import (
     remove_docstring,
     deduplicate,
 )
-from .source_cleanup import wrap_bool_returns
+from .source_cleanup import wrap_bool_returns, remove_unused_imports
 
 class SelfMethodInliner(ast.NodeTransformer):
     """Replace self.method(args) with extracted helper _method(args)."""
@@ -64,6 +69,7 @@ class SelfMethodInliner(ast.NodeTransformer):
                 node,
             )
         except Exception:
+            logger.exception("SelfMethodInliner: failed to extract %s.%s", type(self._recognizer).__name__, attr_name)
             return node
 
 class PresidioReferenceInliner(ast.NodeTransformer):
@@ -117,6 +123,7 @@ class PresidioReferenceInliner(ast.NodeTransformer):
                         self.helper_srcs[helper_name] = src
                         self.imports.extend(imports)
                     except Exception:
+                        logger.exception("PresidioReferenceInliner: failed to extract %s.%s", cls_obj.__name__, real_method)
                         return node
                 return ast.copy_location(
                     ast.Call(
@@ -130,7 +137,6 @@ class PresidioReferenceInliner(ast.NodeTransformer):
         if isinstance(node.func, ast.Name):
             cls_obj = self._globals.get(node.func.id)
             if cls_obj is not None and _is_presidio(cls_obj) and isinstance(cls_obj, type):
-                from presidio_analyzer import RecognizerResult as _RC
                 if cls_obj is _RC:
                     replacement_name = "_RecognizerResult"
                 else:
@@ -152,7 +158,9 @@ def extract_static_method(func, func_name: str, extracted_names: set[str]) -> tu
     source = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source)
 
-    func_def = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef))
+    func_def = next((n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)), None)
+    if func_def is None:
+        raise ValueError(f"No FunctionDef found in source of {func.__qualname__}")
     func_def.decorator_list = []
     remove_docstring(func_def)
     func_def.name = func_name
@@ -168,7 +176,8 @@ def extract_static_method(func, func_name: str, extracted_names: set[str]) -> tu
     imports = resolve_imports(free_names(func_def), func.__globals__)
     helper_srcs = list(presidio_inliner.helper_srcs.values())
     src = wrap_bool_returns("\n\n".join(helper_srcs + [ast.unparse(tree)]))
-    return src, deduplicate(presidio_inliner.imports + imports)
+    all_imports = remove_unused_imports(src, deduplicate(presidio_inliner.imports + imports))
+    return src, all_imports
 
 def extract_instance_method(
     recognizer,
@@ -185,7 +194,9 @@ def extract_instance_method(
     source = textwrap.dedent(inspect.getsource(method))
     tree = ast.parse(source)
 
-    func_def = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef))
+    func_def = next((n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)), None)
+    if func_def is None:
+        raise ValueError(f"No FunctionDef found in source of {type(recognizer).__name__}.{method_name}")
     func_def.args.args = [a for a in func_def.args.args if a.arg != "self"]
     func_def.decorator_list = []
     remove_docstring(func_def)
@@ -208,6 +219,6 @@ def extract_instance_method(
 
     imports = resolve_imports(free_names(func_def), method.__globals__)
     helper_srcs = list(self_method_inliner.helper_srcs.values()) + list(presidio_inliner.helper_srcs.values())
-    all_imports = deduplicate(self_method_inliner.imports + presidio_inliner.imports + imports)
     src = wrap_bool_returns("\n\n".join(helper_srcs + [ast.unparse(tree)]))
+    all_imports = remove_unused_imports(src, deduplicate(self_method_inliner.imports + presidio_inliner.imports + imports))
     return src, all_imports

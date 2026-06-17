@@ -1,0 +1,53 @@
+"""Entity generated from {{ identity.module }}.{{ identity.class_name }}."""
+{% if imports_block %}
+{{ imports_block }}
+{% endif %}
+from maskpipe.entities.entity import Entity
+{% if validator %}
+
+{{ validator.src }}
+{% elif validator_todo %}
+
+# TODO: port validator logic from:
+{% for method in validator_todo.methods %}
+#   {{ identity.module }}.{{ identity.class_name }}.{{ method }}
+{% endfor %}
+_validator = None
+{% endif %}
+{% if analyze %}
+
+{{ analyze.src }}
+
+def _custom_matcher(doc: Doc) -> list[tuple[int, int, float]]:
+    spans = []
+    for char_start, char_end, score in _analyze(doc.text):
+        span = doc.char_span(char_start, char_end, alignment_mode="{{ analyze.alignment_mode }}")
+        if span:
+            spans.append((span.start, span.end, score))
+    return spans
+{% endif %}
+
+{{ identity.var_name }} = Entity(
+    label="{{ identity.label }}",
+{% if patterns %}
+    patterns=[
+{% for p in patterns.patterns %}
+{{ p | format_pattern }},
+{% endfor %}
+    ],
+{% endif %}
+{% if analyze %}
+    custom_matcher=_custom_matcher,
+{% elif validator or validator_todo %}
+    validator=_validator,
+{% else %}
+    validator=None,
+{% endif %}
+{% if context %}
+    context_patterns=[
+{% for cp in context.context_patterns %}
+{{ cp | format_context_pattern }},
+{% endfor %}
+    ],
+{% endif %}
+)

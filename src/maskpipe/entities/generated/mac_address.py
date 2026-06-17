@@ -1,18 +1,14 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.generic.mac_recognizer.MacAddressRecognizer."""
-from spacy.tokens import Span
 import re
+from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
 
-def _invalidate(pattern_text: str) -> bool:
+def _validator(span: Span) -> bool:
+    pattern_text = span.text
     cleaned = re.sub('[:\\-.]', '', pattern_text)
     if re.fullmatch('[0-9A-Fa-f]{12}', cleaned) is None:
-        return True
+        return False
     if cleaned.upper() == 'FFFFFFFFFFFF' or cleaned.upper() == '000000000000':
-        return True
-    return False
-
-def _validator(span: Span) -> bool:
-    if _invalidate(span.text):
         return False
     return True
 

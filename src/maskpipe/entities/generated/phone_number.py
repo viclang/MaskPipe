@@ -1,6 +1,6 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.generic.phone_recognizer.PhoneRecognizer."""
-from spacy.tokens import Doc
 from phonenumbers.phonenumberutil import NumberParseException
+from spacy.tokens import Doc
 import phonenumbers
 from maskpipe.entities.entity import Entity
 

@@ -1,7 +1,6 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.finland.fi_personal_identity_code_recognizer.FiPersonalIdentityCodeRecognizer."""
-from spacy.tokens import Span
-from typing import Optional
 from datetime import datetime
+from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
 
 def _validator(span: Span) -> bool:

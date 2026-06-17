@@ -1,15 +1,15 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.korea.kr_driver_license_recognizer.KrDriverLicenseRecognizer."""
-from spacy.tokens import Span
 from typing import List
 from typing import Tuple
+from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
 
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
-
 def _validator(span: Span) -> bool:
+
+    def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
+        for search_string, replacement_string in replacement_pairs:
+            text = text.replace(search_string, replacement_string)
+        return text
     pattern_text = span.text
     sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
     if len(sanitized_value) != 12:
@@ -17,7 +17,7 @@ def _validator(span: Span) -> bool:
     if not sanitized_value.isdigit():
         return False
     region_code = sanitized_value[:2]
-    if region_code not in {'11', '24', '20', '13', '12', '15', '23', '18', '26', '22', '17', '16', '14', '25', '28', '19', '21'}:
+    if region_code not in {'13', '19', '21', '24', '17', '23', '22', '26', '20', '12', '16', '18', '14', '11', '25', '15', '28'}:
         return False
     return True
 

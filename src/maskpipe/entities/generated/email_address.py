@@ -3,7 +3,7 @@ from spacy.tokens import Span
 import tldextract
 from maskpipe.entities.entity import Entity
 
-def _validator(span: Span):
+def _validator(span: Span) -> bool:
     pattern_text = span.text
     result = tldextract.extract(pattern_text)
     return result.fqdn != ''

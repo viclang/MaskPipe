@@ -10,7 +10,9 @@ import textwrap
 from .ast_utils import (
     SelfAttrInliner,
     LiteralParamInliner,
+    GlobalConstantInliner,
     free_names,
+    local_names,
     resolve_imports,
     drop_presidio_return_type,
     remove_docstring,
@@ -26,12 +28,14 @@ from .source_cleanup import (
     fix_blank_lines,
 )
 
-def extract_analyze(recognizer) -> tuple[str, list[str]]:
+def extract_custom_matcher(recognizer) -> tuple[str, list[str]]:
     method = getattr(type(recognizer), "analyze")
     source = textwrap.dedent(inspect.getsource(method))
     tree = ast.parse(source)
 
-    func_def = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef))
+    func_def = next((n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)), None)
+    if func_def is None:
+        raise ValueError(f"No FunctionDef found in source of {type(recognizer).__name__}.analyze")
 
     # Inline all params except `text`, which becomes the sole argument of _analyze
     params_to_inline: dict = {
@@ -64,6 +68,9 @@ def extract_analyze(recognizer) -> tuple[str, list[str]]:
     tree = presidio_inliner.visit(tree)
     ast.fix_missing_locations(tree)
 
+    tree = GlobalConstantInliner(method.__globals__, local_names(func_def)).visit(tree)
+    ast.fix_missing_locations(tree)
+
     imports = resolve_imports(free_names(func_def), method.__globals__)
     helper_srcs = list(self_method_inliner.helper_srcs.values()) + list(presidio_inliner.helper_srcs.values())
     src = "\n\n".join(helper_srcs + [ast.unparse(tree)])
@@ -71,7 +78,7 @@ def extract_analyze(recognizer) -> tuple[str, list[str]]:
 
     src = replace_result_objects_with_tuples(src)
     src = remove_uncalled_functions(src, keep={"_analyze"})
-    src = inline_single_return_functions(src)
+    src = inline_single_return_functions(src, keep={"_analyze"})
 
     if "_RecognizerResult(" in src:
         all_imports = [RECOGNIZER_RESULT_FALLBACK] + all_imports

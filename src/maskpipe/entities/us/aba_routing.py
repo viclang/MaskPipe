@@ -4,8 +4,6 @@ Recognizes ABA (American Banking Association) routing numbers
 also known as routing transit numbers (RTN).
 Includes Luhn-like checksum validation.
 """
-from typing import List
-
 from spacy.tokens import Span
 
 from ..entity import Entity

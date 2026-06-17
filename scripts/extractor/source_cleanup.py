@@ -5,7 +5,10 @@ Everything else here is presidio-agnostic.
 """
 import ast
 import copy
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 
 from .ast_utils import ArgumentSubstitutor
 
@@ -50,6 +53,7 @@ def replace_result_objects_with_tuples(src: str) -> str:
         ast.fix_missing_locations(tree)
         return ast.unparse(tree)
     except Exception:
+        logger.exception("replace_result_objects_with_tuples failed")
         return src
 
 def fix_blank_lines(src: str) -> str:
@@ -92,6 +96,7 @@ def wrap_bool_returns(src: str) -> str:
         ast.fix_missing_locations(tree)
         return ast.unparse(tree)
     except Exception:
+        logger.exception("wrap_bool_returns failed")
         return src
 
 class _CallSiteReplacer(ast.NodeTransformer):
@@ -111,14 +116,14 @@ class _CallSiteReplacer(ast.NodeTransformer):
             return ast.copy_location(inlined, node)
         return node
 
-def inline_single_return_functions(src: str) -> str:
+def inline_single_return_functions(src: str, keep: set[str] = frozenset()) -> str:
     """Inline top-level functions whose entire body is a single return expression."""
     try:
         tree = ast.parse(src)
         inlineable: dict[str, tuple[list[str], ast.expr]] = {}
 
         for node in tree.body:
-            if not isinstance(node, ast.FunctionDef):
+            if not isinstance(node, ast.FunctionDef) or node.name in keep:
                 continue
             body = node.body
             if (len(body) == 2
@@ -137,8 +142,9 @@ def inline_single_return_functions(src: str) -> str:
 
         new_tree = _CallSiteReplacer(inlineable).visit(tree)
         ast.fix_missing_locations(new_tree)
-        return remove_uncalled_functions(ast.unparse(new_tree), keep={"_analyze"})
+        return remove_uncalled_functions(ast.unparse(new_tree), keep=keep)
     except Exception:
+        logger.exception("inline_single_return_functions failed")
         return src
 
 def remove_unused_imports(src: str, imports: list[str]) -> list[str]:
@@ -148,9 +154,89 @@ def remove_unused_imports(src: str, imports: list[str]) -> list[str]:
             result.append(imp)
             continue
         name = imp.split(" import ", 1)[-1].strip() if imp.startswith("from ") else imp[len("import "):].strip()
-        if name in src:
+        if " as " in name:
+            name = name.split(" as ", 1)[1].strip()
+        if re.search(r"\b" + re.escape(name) + r"\b", src):
             result.append(imp)
     return result
+
+class _ReturnFlipper(ast.NodeTransformer):
+    """Flip return True ↔ return False, not recursing into nested function defs."""
+
+    def visit_Return(self, node):
+        if isinstance(node.value, ast.Constant):
+            if node.value.value is True:
+                node.value = ast.Constant(value=False)
+            elif node.value.value is False:
+                node.value = ast.Constant(value=True)
+        return node
+
+    def visit_FunctionDef(self, node):
+        return node
+
+    def visit_AsyncFunctionDef(self, node):
+        return node
+
+
+def _is_thin_invalidate_wrapper(validator_def: ast.FunctionDef) -> bool:
+    """True when _validator is just: [optional assign,] if _invalidate(...): return False; return True."""
+    body = validator_def.body
+    start = 1 if body and isinstance(body[0], ast.Assign) else 0
+    if len(body) - start != 2:
+        return False
+    check, ret = body[start], body[start + 1]
+    return (
+        isinstance(check, ast.If)
+        and isinstance(check.test, ast.Call)
+        and isinstance(check.test.func, ast.Name)
+        and check.test.func.id == "_invalidate"
+        and len(check.body) == 1
+        and isinstance(check.body[0], ast.Return)
+        and isinstance(check.body[0].value, ast.Constant)
+        and check.body[0].value.value is False
+        and not check.orelse
+        and isinstance(ret, ast.Return)
+        and isinstance(ret.value, ast.Constant)
+        and ret.value.value is True
+    )
+
+
+def fold_helpers_into_validator(src: str) -> str:
+    """Fold top-level helpers into _validator.
+
+    Two strategies:
+    - Single _invalidate + thin wrapper → inline body with returns flipped (True↔False).
+    - Otherwise → nest all helpers as local functions at the top of _validator body;
+      duplicate definitions (same name) are deduplicated, keeping the first.
+    """
+    try:
+        tree = ast.parse(src)
+        helpers = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name != "_validator"]
+        validator = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_validator"), None)
+        if validator is None or not helpers:
+            return src
+
+        if len(helpers) == 1 and helpers[0].name == "_invalidate" and _is_thin_invalidate_wrapper(validator):
+            inv = helpers[0]
+            orig_param = inv.args.args[0].arg if inv.args.args else "pattern_text"
+            flipped = [_ReturnFlipper().visit(copy.deepcopy(s)) for s in inv.body]
+            validator.body = [ast.parse(f"{orig_param} = span.text").body[0]] + flipped
+            tree.body = [n for n in tree.body if n is not inv]
+        else:
+            seen: set[str] = set()
+            unique = [h for h in helpers if h.name not in seen and not seen.add(h.name)]  # type: ignore[func-returns-value]
+            helper_set = set(helpers)
+            tree.body = [n for n in tree.body if n not in helper_set]
+            validator.body = unique + validator.body
+
+        ast.fix_missing_locations(tree)
+        result = ast.unparse(tree)
+        result = re.sub(r"\n(    def )", r"\n\n\1", result)
+        return fix_blank_lines(result)
+    except Exception:
+        logger.exception("fold_helpers_into_validator failed")
+        return src
+
 
 def remove_uncalled_functions(src: str, keep: set[str]) -> str:
     try:
@@ -171,4 +257,5 @@ def remove_uncalled_functions(src: str, keep: set[str]) -> str:
         ast.fix_missing_locations(tree)
         return ast.unparse(tree)
     except Exception:
+        logger.exception("remove_uncalled_functions failed")
         return src
