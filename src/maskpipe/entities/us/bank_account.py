@@ -8,14 +8,12 @@ from spacy.tokens import Span
 
 from ..entity import Entity
 
-
 def _valid_bank_account(span: Span) -> bool:
     """Basic validation for bank account numbers."""
     text = span.text.strip()
     only_digits = "".join(c for c in text if c.isdigit())
     # Must be 8-17 digits
     return 8 <= len(only_digits) <= 17
-
 
 US_BANK_ACCOUNT = Entity(
     label="US_BANK_ACCOUNT",

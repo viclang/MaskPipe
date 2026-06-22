@@ -89,11 +89,9 @@ def _import_sort_key(imp: str) -> tuple[int, str]:
     return (0 if mod in _STDLIB else 1, imp)
 
 
-def _build_imports_block(entity: RecognizerEntity) -> str:
-    """Collect imports from all components, deduped, stdlib-first, multi-line blocks last."""
+def _build_imports_block(validator: ValidatorComponent | None, analyze: AnalyzeComponent | None) -> str:
+    """Collect imports from validator and analyze components, deduped, stdlib-first, multi-line blocks last."""
     raw: list[str] = []
-    analyze = entity.get(AnalyzeComponent)
-    validator = entity.get(ValidatorComponent)
     if analyze:
         raw.append("from spacy.tokens import Doc")
     if validator:
@@ -122,13 +120,15 @@ def _build_imports_block(entity: RecognizerEntity) -> str:
 # ---------------------------------------------------------------------------
 
 def render(entity: RecognizerEntity) -> str:
+    validator = entity.get(ValidatorComponent)
+    analyze = entity.get(AnalyzeComponent)
     src = _env.get_template("entity.j2").render(
         identity=entity.get(IdentityComponent),
         patterns=entity.get(PatternsComponent),
         context=entity.get(ContextComponent),
-        validator=entity.get(ValidatorComponent),
+        validator=validator,
         validator_todo=entity.get(ValidatorTodoComponent),
-        analyze=entity.get(AnalyzeComponent),
-        imports_block=_build_imports_block(entity),
+        analyze=analyze,
+        imports_block=_build_imports_block(validator, analyze),
     )
     return re.sub(r"\n{3,}", "\n\n", src)

@@ -1,8 +1,7 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.india.in_aadhaar_recognizer.InAadhaarRecognizer."""
-from typing import List
-from typing import Tuple
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
+from maskpipe.entities.util import sanitize_value
 
 def _is_verhoeff_number(input_number: int) -> bool:
     __d__ = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 0, 6, 7, 8, 9, 5], [2, 3, 4, 0, 1, 7, 8, 9, 5, 6], [3, 4, 0, 1, 2, 8, 9, 5, 6, 7], [4, 0, 1, 2, 3, 9, 5, 6, 7, 8], [5, 9, 8, 7, 6, 0, 4, 3, 2, 1], [6, 5, 9, 8, 7, 1, 0, 4, 3, 2], [7, 6, 5, 9, 8, 2, 1, 0, 4, 3], [8, 7, 6, 5, 9, 3, 2, 1, 0, 4], [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]]
@@ -26,14 +25,9 @@ def _check_aadhaar(sanitized_value: str) -> bool:
         is_valid_aadhaar = True
     return is_valid_aadhaar
 
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
-
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', ''), (':', '')])
+    sanitized_value = sanitize_value(pattern_text, [('-', ''), (' ', ''), (':', '')])
     return bool(_check_aadhaar(sanitized_value))
 
 IN_AADHAAR = Entity(

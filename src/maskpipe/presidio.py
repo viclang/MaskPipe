@@ -54,9 +54,9 @@ class PresidioConverter:
     def _convert_pattern_recognizer(self, recognizer: PatternRecognizer) -> Entity:
         patterns: List[Pattern] = []
         for p in recognizer.patterns:
-            patterns.extend(self._translate_pattern(p.regex, p.score))
+            patterns.extend(self.translate_pattern(p.regex, p.score))
 
-        context_patterns = self._translate_context(recognizer.context)
+        context_patterns = self.translate_context(recognizer.context)
         validator = self._wrap_validator(recognizer)
 
         return Entity(
@@ -80,7 +80,7 @@ class PresidioConverter:
     _CC_MASK = re.compile(r"\[[^\]]*\]")
     _MARKER = "\x00"
 
-    def _translate_pattern(self, regex: str, score: float) -> List[Pattern]:
+    def translate_pattern(self, regex: str, score: float) -> List[Pattern]:
         """Translate a Presidio regex to one or two maskpipe Pattern dicts.
 
         Always produces the original as a single-token pattern (covers tokenizers
@@ -204,7 +204,7 @@ class PresidioConverter:
 
         return _validator
 
-    def _translate_context(
+    def translate_context(
         self, context: Optional[List[str]]
     ) -> Optional[List[ContextPattern]]:
         if not context:

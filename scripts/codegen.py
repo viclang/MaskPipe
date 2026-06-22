@@ -87,7 +87,7 @@ def _attach_identity(recognizer: EntityRecognizer, entity: RecognizerEntity) -> 
 
 
 def _attach_context(recognizer: EntityRecognizer, converter: PresidioConverter, entity: RecognizerEntity) -> None:
-    cp = converter._translate_context(getattr(recognizer, "context", None))
+    cp = converter.translate_context(getattr(recognizer, "context", None))
     if cp:
         entity.attach(ContextComponent(context_patterns=cp))
 
@@ -95,13 +95,14 @@ def _attach_context(recognizer: EntityRecognizer, converter: PresidioConverter, 
 def _attach_patterns(recognizer: PatternRecognizer, converter: PresidioConverter, entity: RecognizerEntity) -> None:
     patterns = []
     for p in recognizer.patterns:
-        patterns.extend(converter._translate_pattern(p.regex, p.score))
+        patterns.extend(converter.translate_pattern(p.regex, p.score))
     entity.attach(PatternsComponent(patterns=patterns))
 
 
 def _attach_validator(recognizer: PatternRecognizer, entity: RecognizerEntity) -> None:
-    src, imports = extract_validator(recognizer)
-    if src is not None:
+    result = extract_validator(recognizer)
+    if result is not None:
+        src, imports = result
         entity.attach(ValidatorComponent(src=src, imports=imports))
         return
     methods = []

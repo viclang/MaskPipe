@@ -1,7 +1,5 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.generic.iban_recognizer.IbanRecognizer."""
 from typing import Dict
-from typing import List
-from typing import Tuple
 from spacy.tokens import Span
 import regex as re
 
@@ -9,6 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from maskpipe.entities.entity import Entity
+from maskpipe.entities.util import sanitize_value
 
 def _number_iban(iban: str, letters: Dict[int, str]) -> str:
     return (iban[4:] + iban[:4]).translate(letters)
@@ -31,15 +30,10 @@ def _is_valid_format(iban: str, bos_eos: Tuple[str, str]=('^', '$'), flags: int=
             return False
     return False
 
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
-
 def _validator(span: Span) -> bool:
     pattern_text = span.text
     try:
-        pattern_text = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+        pattern_text = sanitize_value(pattern_text, [('-', ''), (' ', '')])
         is_valid_checksum = _generate_iban_check_digits(pattern_text, {48: '0', 49: '1', 50: '2', 51: '3', 52: '4', 53: '5', 54: '6', 55: '7', 56: '8', 57: '9', 65: '10', 66: '11', 67: '12', 68: '13', 69: '14', 70: '15', 71: '16', 72: '17', 73: '18', 74: '19', 75: '20', 76: '21', 77: '22', 78: '23', 79: '24', 80: '25', 81: '26', 82: '27', 83: '28', 84: '29', 85: '30', 86: '31', 87: '32', 88: '33', 89: '34', 90: '35'}) == pattern_text[2:4]
         result = False
         if is_valid_checksum:

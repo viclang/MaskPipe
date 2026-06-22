@@ -153,11 +153,30 @@ class PresidioReferenceInliner(ast.NodeTransformer):
 
         return node
 
+def _finalize_extracted_function(
+    tree: ast.Module,
+    func_def: ast.FunctionDef,
+    globals_: dict,
+    extracted_names: set[str],
+    prior_helper_srcs: list[str],
+    prior_imports: list[str],
+) -> tuple[str, list[str]]:
+    """Apply Presidio + GlobalConstant inlining, resolve imports, and assemble source."""
+    presidio_inliner = PresidioReferenceInliner(globals_, extracted_names)
+    tree = presidio_inliner.visit(tree)
+    ast.fix_missing_locations(tree)
+    tree = GlobalConstantInliner(globals_, local_names(func_def)).visit(tree)
+    ast.fix_missing_locations(tree)
+    imports = resolve_imports(free_names(func_def), globals_)
+    helper_srcs = prior_helper_srcs + list(presidio_inliner.helper_srcs.values())
+    src = wrap_bool_returns("\n\n".join(helper_srcs + [ast.unparse(tree)]))
+    all_imports = remove_unused_imports(src, deduplicate(prior_imports + presidio_inliner.imports + imports))
+    return src, all_imports
+
 def extract_static_method(func, func_name: str, extracted_names: set[str]) -> tuple[str, list[str]]:
     """Extract a plain function or staticmethod as a self-contained helper."""
     source = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source)
-
     func_def = next((n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)), None)
     if func_def is None:
         raise ValueError(f"No FunctionDef found in source of {func.__qualname__}")
@@ -165,19 +184,7 @@ def extract_static_method(func, func_name: str, extracted_names: set[str]) -> tu
     remove_docstring(func_def)
     func_def.name = func_name
     drop_presidio_return_type(func_def, func.__globals__)
-
-    presidio_inliner = PresidioReferenceInliner(func.__globals__, extracted_names)
-    tree = presidio_inliner.visit(tree)
-    ast.fix_missing_locations(tree)
-
-    tree = GlobalConstantInliner(func.__globals__, local_names(func_def)).visit(tree)
-    ast.fix_missing_locations(tree)
-
-    imports = resolve_imports(free_names(func_def), func.__globals__)
-    helper_srcs = list(presidio_inliner.helper_srcs.values())
-    src = wrap_bool_returns("\n\n".join(helper_srcs + [ast.unparse(tree)]))
-    all_imports = remove_unused_imports(src, deduplicate(presidio_inliner.imports + imports))
-    return src, all_imports
+    return _finalize_extracted_function(tree, func_def, func.__globals__, extracted_names, [], [])
 
 def extract_instance_method(
     recognizer,
@@ -193,7 +200,6 @@ def extract_instance_method(
     method = getattr(type(recognizer), method_name)
     source = textwrap.dedent(inspect.getsource(method))
     tree = ast.parse(source)
-
     func_def = next((n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)), None)
     if func_def is None:
         raise ValueError(f"No FunctionDef found in source of {type(recognizer).__name__}.{method_name}")
@@ -205,20 +211,12 @@ def extract_instance_method(
 
     tree = SelfAttrInliner(recognizer).visit(tree)
     ast.fix_missing_locations(tree)
-
-    self_method_inliner = SelfMethodInliner(recognizer, extracted_names)
-    tree = self_method_inliner.visit(tree)
+    self_inliner = SelfMethodInliner(recognizer, extracted_names)
+    tree = self_inliner.visit(tree)
     ast.fix_missing_locations(tree)
 
-    presidio_inliner = PresidioReferenceInliner(method.__globals__, extracted_names)
-    tree = presidio_inliner.visit(tree)
-    ast.fix_missing_locations(tree)
-
-    tree = GlobalConstantInliner(method.__globals__, local_names(func_def)).visit(tree)
-    ast.fix_missing_locations(tree)
-
-    imports = resolve_imports(free_names(func_def), method.__globals__)
-    helper_srcs = list(self_method_inliner.helper_srcs.values()) + list(presidio_inliner.helper_srcs.values())
-    src = wrap_bool_returns("\n\n".join(helper_srcs + [ast.unparse(tree)]))
-    all_imports = remove_unused_imports(src, deduplicate(self_method_inliner.imports + presidio_inliner.imports + imports))
-    return src, all_imports
+    return _finalize_extracted_function(
+        tree, func_def, method.__globals__, extracted_names,
+        prior_helper_srcs=list(self_inliner.helper_srcs.values()),
+        prior_imports=self_inliner.imports,
+    )

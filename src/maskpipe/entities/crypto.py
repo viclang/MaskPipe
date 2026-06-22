@@ -9,7 +9,6 @@ from .entity import Entity
 CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 BECH32M_CONST = 0x2BC830A3
 
-
 def _bech32_polymod(values: List[int]) -> int:
     """Compute the Bech32 checksum."""
     generator = [0x3B6A57B2, 0x26508E6D, 0x1EA119FA, 0x3D4233DD, 0x2A1462B3]
@@ -21,11 +20,9 @@ def _bech32_polymod(values: List[int]) -> int:
             chk ^= generator[i] if ((top >> i) & 1) else 0
     return chk
 
-
 def _bech32_hrp_expand(hrp: str) -> List[int]:
     """Expand the HRP into values for checksum computation."""
     return [ord(x) >> 5 for x in hrp] + [0] + [ord(x) & 31 for x in hrp]
-
 
 def _bech32_verify_checksum(hrp: str, data: List[int]) -> int | None:
     """Verify a checksum given HRP and converted data characters."""
@@ -35,7 +32,6 @@ def _bech32_verify_checksum(hrp: str, data: List[int]) -> int | None:
     if const == BECH32M_CONST:
         return 2  # BECH32M
     return None
-
 
 def _bech32_decode(bech: str) -> tuple:
     """Validate a Bech32/Bech32m string, and determine HRP and data."""
@@ -56,7 +52,6 @@ def _bech32_decode(bech: str) -> tuple:
         return (None, None, None)
     return (hrp, data[:-6], spec)
 
-
 def _decode_base58(bc: bytes) -> bytes:
     """Decode Base58 encoded Bitcoin address."""
     digits58 = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -67,7 +62,6 @@ def _decode_base58(bc: bytes) -> bytes:
     for char in bc:
         n = n * 58 + digits58.index(char)
     return n.to_bytes(origlen - len(bc) + (n.bit_length() + 7) // 8, "big")
-
 
 def _valid_crypto(span: Span) -> bool:
     """
@@ -97,7 +91,6 @@ def _valid_crypto(span: Span) -> bool:
             return False
     return False
 
-
 class CryptoMatcher:
     """Matcher for crypto wallet addresses using regex."""
 
@@ -113,7 +106,6 @@ class CryptoMatcher:
             if span:
                 matches.append((span.start, span.end, 0.5))
         return matches
-
 
 CRYPTO = Entity(
     label="CRYPTO",

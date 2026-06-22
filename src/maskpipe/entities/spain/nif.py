@@ -1,17 +1,17 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.spain.es_nif_recognizer.EsNifRecognizer."""
-from typing import List
-from typing import Tuple
+
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
+from maskpipe.entities.util import sanitize_value
 
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
+def sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
     for search_string, replacement_string in replacement_pairs:
         text = text.replace(search_string, replacement_string)
     return text
 
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    pattern_text = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    pattern_text = sanitize_value(pattern_text, [('-', ''), (' ', '')])
     letter = pattern_text[-1]
     number = int(''.join(filter(str.isdigit, pattern_text)))
     letters = 'TRWAGMYFPDXBNJZSQVHLCKE'

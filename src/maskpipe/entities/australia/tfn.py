@@ -1,17 +1,11 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.australia.au_tfn_recognizer.AuTfnRecognizer."""
-from typing import List
-from typing import Tuple
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
-
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
+from maskpipe.entities.util import sanitize_value
 
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    text = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    text = sanitize_value(pattern_text, [('-', ''), (' ', '')])
     tfn_list = [int(digit) for digit in text if not digit.isspace()]
     weight = [1, 4, 3, 7, 5, 8, 6, 9, 10]
     sum_product = 0

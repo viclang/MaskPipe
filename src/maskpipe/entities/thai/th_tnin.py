@@ -1,8 +1,8 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.thai.th_tnin_recognizer.ThTninRecognizer."""
-from typing import List
-from typing import Tuple
+
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
+from maskpipe.entities.util import sanitize_value
 
 def _validate_checksum(tnin: str) -> bool:
     weights = list(range(13, 1, -1))
@@ -17,14 +17,14 @@ def _validate_checksum(tnin: str) -> bool:
     actual_check_digit = int(tnin[12])
     return expected_check_digit == actual_check_digit
 
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
+def sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
     for search_string, replacement_string in replacement_pairs:
         text = text.replace(search_string, replacement_string)
     return text
 
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    sanitized_value = _sanitize_value(pattern_text, [])
+    sanitized_value = sanitize_value(pattern_text, [])
     if len(sanitized_value) != 13:
         return False
     if not sanitized_value.isdigit():

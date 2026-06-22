@@ -8,7 +8,6 @@ from spacy.tokens import Span
 
 from ..entity import Entity
 
-
 def _valid_aba_routing(span: Span) -> bool:
     """
     Validate ABA routing number using checksum algorithm.
@@ -24,7 +23,6 @@ def _valid_aba_routing(span: Span) -> bool:
     weights = [3, 7, 1, 3, 7, 1, 3, 7, 1]
     checksum = sum(int(d) * w for d, w in zip(digits, weights))
     return checksum % 10 == 0
-
 
 ABA_ROUTING_NUMBER = Entity(
     label="ABA_ROUTING_NUMBER",

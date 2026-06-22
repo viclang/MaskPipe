@@ -4,7 +4,6 @@ from spacy.tokens import Span
 
 from .entity import Entity
 
-
 def _valid_mac(span: Span) -> bool:
     """
     Validate MAC address format (48-bit address with hex groups).
@@ -30,7 +29,6 @@ def _valid_mac(span: Span) -> bool:
         return False
     
     return True
-
 
 MAC_ADDRESS = Entity(
     label="MAC_ADDRESS",

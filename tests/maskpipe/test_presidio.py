@@ -22,7 +22,7 @@ skip_no_presidio = pytest.mark.skipif(not HAS_PRESIDIO, reason="presidio-analyze
 
 def test_translate_pattern_wraps_regex():
     converter = PresidioConverter()
-    patterns = converter._translate_pattern(r"\b\d{9}\b", 0.5)
+    patterns = converter.translate_pattern(r"\b\d{9}\b", 0.5)
     assert len(patterns) == 1
     assert patterns[0]["score"] == 0.5
     assert patterns[0]["pattern"] == [{"TEXT": {"REGEX": r"\b\d{9}\b"}}]
@@ -30,13 +30,13 @@ def test_translate_pattern_wraps_regex():
 
 def test_translate_context_returns_none_when_empty():
     converter = PresidioConverter()
-    assert converter._translate_context([]) is None
-    assert converter._translate_context(None) is None
+    assert converter.translate_context([]) is None
+    assert converter.translate_context(None) is None
 
 
 def test_translate_context_uses_context_boost():
     converter = PresidioConverter(context_boost=0.4)
-    result = converter._translate_context(["ssn", "social security"])
+    result = converter.translate_context(["ssn", "social security"])
     assert result is not None
     assert len(result) == 1
     assert result[0]["score"] == 0.4

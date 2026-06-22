@@ -1,31 +1,12 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.generic.credit_card_recognizer.CreditCardRecognizer."""
-from typing import List
-from typing import Tuple
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
-
-def _luhn_checksum(sanitized_value: str) -> bool:
-
-    def digits_of(n: str) -> List[int]:
-        return [int(dig) for dig in str(n)]
-    digits = digits_of(sanitized_value)
-    odd_digits = digits[-1::-2]
-    even_digits = digits[-2::-2]
-    checksum = sum(odd_digits)
-    for d in even_digits:
-        checksum += sum(digits_of(str(d * 2)))
-    return checksum % 10 == 0
-
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
+from maskpipe.entities.util import sanitize_value, luhn_checksum
 
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
-    checksum = _luhn_checksum(sanitized_value)
-    return checksum
+    sanitized_value = sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    return luhn_checksum(sanitized_value)
 
 CREDIT_CARD = Entity(
     label="CREDIT_CARD",

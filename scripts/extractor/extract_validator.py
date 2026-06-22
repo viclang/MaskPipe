@@ -28,12 +28,12 @@ def _adapt_first_param_to_span(src: str, func_name: str) -> str:
     ast.fix_missing_locations(tree)
     return ast.unparse(tree)
 
-def extract_validator(recognizer) -> tuple[str, list[str]] | tuple[None, None]:
+def extract_validator(recognizer) -> tuple[str, list[str]] | None:
     has_validate = type(recognizer).validate_result is not PatternRecognizer.validate_result
     has_invalidate = type(recognizer).invalidate_result is not PatternRecognizer.invalidate_result
 
     if not has_validate and not has_invalidate:
-        return None, None
+        return None
 
     all_imports: list[str] = ["from spacy.tokens import Span"]
     helper_srcs: list[str] = []
@@ -62,7 +62,7 @@ def extract_validator(recognizer) -> tuple[str, list[str]] | tuple[None, None]:
             helper_srcs.append(wrapper)
     except Exception:
         logger.exception("extract_validator failed for %s", type(recognizer).__name__)
-        return None, None
+        return None
 
     src = fix_blank_lines("\n\n".join(helper_srcs))
     src = fold_helpers_into_validator(src)

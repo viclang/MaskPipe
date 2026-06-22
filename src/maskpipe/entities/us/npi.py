@@ -1,13 +1,7 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.us.us_npi_recognizer.UsNpiRecognizer."""
-from typing import List
-from typing import Tuple
 from spacy.tokens import Span
 from maskpipe.entities.entity import Entity
-
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
+from maskpipe.entities.util import sanitize_value
 
 def _npi_luhn_checksum(sanitized_value: str) -> bool:
     prefixed = '80840' + sanitized_value
@@ -23,12 +17,12 @@ def _npi_luhn_checksum(sanitized_value: str) -> bool:
 
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    sanitized_value = sanitize_value(pattern_text, [('-', ''), (' ', '')])
     if sanitized_value:
         body = sanitized_value[:-1] if len(sanitized_value) > 1 else sanitized_value
         if body and len(set(body)) == 1:
             return False
-    sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    sanitized_value = sanitize_value(pattern_text, [('-', ''), (' ', '')])
     return bool(_npi_luhn_checksum(sanitized_value))
 
 US_NPI = Entity(
