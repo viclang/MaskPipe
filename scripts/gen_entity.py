@@ -16,10 +16,9 @@ import re
 import sys
 from pathlib import Path
 
-from maskpipe.presidio import PresidioConverter
-
 try:
-    from presidio_analyzer import EntityRecognizer, PatternRecognizer
+    from maskpipe.presidio import PresidioConverter  # ty: ignore[unresolved-import]
+    from presidio_analyzer import EntityRecognizer
     import presidio_analyzer.predefined_recognizers  # noqa: F401 — registers all subclasses
 except ImportError:
     print("error: presidio-analyzer is required. Install with: pip install maskpipe[presidio]", file=sys.stderr)
