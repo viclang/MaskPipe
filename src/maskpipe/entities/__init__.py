@@ -25,8 +25,6 @@ from .url import URL
 
 __all__ = [
     "Entity",
-    "nl",
-    "us",
     "CREDIT_CARD",
     "CRYPTO",
     "DATE",
@@ -44,9 +42,11 @@ __all__ = [
     "italy",
     "korea",
     "nigeria",
+    "nl",
     "poland",
     "singapore",
     "spain",
     "thai",
     "uk",
+    "us",
 ]

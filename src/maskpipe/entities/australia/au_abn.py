@@ -21,7 +21,7 @@ _PATTERNS: list[Pattern] = [
 
 # BEGIN GENERATED: context_patterns
 _CONTEXT_PATTERNS: list[ContextPattern] = [
-    {"pattern": [{"LEMMA": {"IN": ["abn"]}}], "score": 0.35},
+    {"pattern": [{"LEMMA": "abn"}], "score": 0.35},
     {"pattern": [{"LEMMA": "australian"}, {"LEMMA": "business"}, {"LEMMA": "number"}], "score": 0.35},
 ]
 # END GENERATED: context_patterns

@@ -218,7 +218,9 @@ class PresidioConverter:
             else:
                 # Multi-word phrase: one token dict per word so spaCy matches across tokens
                 patterns.append({"pattern": [{"LEMMA": t} for t in tokens], "score": self.context_boost})
-        if single_words:
+        if len(single_words) == 1:
+            patterns.insert(0, {"pattern": [{"LEMMA": single_words[0]}], "score": self.context_boost})
+        elif single_words:
             patterns.insert(0, {"pattern": [{"LEMMA": {"IN": single_words}}], "score": self.context_boost})
         return patterns or None
 
