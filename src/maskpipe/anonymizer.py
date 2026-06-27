@@ -5,6 +5,7 @@ from typing import (
     Callable,
     Dict,
     Union,
+    cast,
 )
 
 import srsly
@@ -60,7 +61,7 @@ class Anonymizer(Pipe):
         Process a document and attach masked text under `doc._.masked`.
         The original document is returned unchanged.
         """
-        doc._.masked: str = self._make_masked_doc(doc)
+        doc._.masked = self._make_masked_doc(doc)
         return doc
 
     def add_redactors(
@@ -107,15 +108,15 @@ class Anonymizer(Pipe):
     @staticmethod
     def _normalize_redactor(redactor: Union[str, NoArgReplacement, TextReplacement]) -> TextReplacement:
         if isinstance(redactor, str):
-            s = redactor
-            return lambda _: s
+            fixed = redactor
+            return lambda _: fixed
         sig = inspect.signature(redactor)
-        params = [p for p in sig.parameters.values() if p.name != "self"]
+        params = [param for param in sig.parameters.values() if param.name != "self"]
         if not params:
-            f = redactor
-            return lambda _: f()
+            generator = cast(NoArgReplacement, redactor)
+            return lambda _: generator()
         if len(params) == 1:
-            return redactor
+            return cast(TextReplacement, redactor)
         raise TypeError(
             f"Redactor must be a str or a callable taking zero or one positional argument, "
             f"got {len(params)} parameters"
@@ -147,7 +148,7 @@ class Anonymizer(Pipe):
 
             current_span = sensitive_spans[span_index]
             replacement_tokens = self._apply_redactor(current_span.label_, current_span.text)
-            current_span._.replacement: str = replacement_tokens
+            current_span._.replacement = replacement_tokens
 
             replacement_doc = self.nlp.tokenizer(replacement_tokens)
             for new_token in replacement_doc:
@@ -207,7 +208,7 @@ class Anonymizer(Pipe):
             Pickled redactors dictionary.
         """
         serializers = {"redactors": lambda: srsly.pickle_dumps(self._redactors)}
-        return util.to_bytes(serializers, exclude)  # ty:ignore[invalid-argument-type]
+        return util.to_bytes(serializers, exclude)
 
     def from_disk(
         self,
