@@ -17,10 +17,10 @@ from .crypto import CRYPTO
 from .date import DATE
 from .email import EMAIL
 from .iban import IBAN
-from .ip_address import IPV4, IPV6
-from .mac_address import MAC_ADDRESS
+from .ip import IPV4, IPV6
+from .mac import MAC_ADDRESS
 from .number import NUMBER
-from .phone_number import PHONE_NUMBER
+from .phone import PHONE_NUMBER
 from .url import URL
 
 __all__ = [

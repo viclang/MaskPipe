@@ -1,7 +1,7 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.australia.au_abn_recognizer.AuAbnRecognizer."""
 
 # BEGIN GENERATED: imports
-from typing import List, Tuple
+from maskpipe.entities.util import sanitize_value
 from spacy.tokens import Span
 from maskpipe.entities.entity import ContextPattern, Entity, Pattern
 # END GENERATED: imports
@@ -27,14 +27,9 @@ _CONTEXT_PATTERNS: list[ContextPattern] = [
 # END GENERATED: context_patterns
 
 # BEGIN GENERATED: validator
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
-
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    text = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    text = sanitize_value(pattern_text, [('-', ''), (' ', '')])
     abn_list = [int(digit) for digit in text if not digit.isspace()]
     weight = [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
     abn_list[0] = 9 if abn_list[0] == 0 else abn_list[0] - 1

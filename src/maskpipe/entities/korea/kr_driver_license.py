@@ -1,7 +1,7 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.korea.kr_driver_license_recognizer.KrDriverLicenseRecognizer."""
 
 # BEGIN GENERATED: imports
-from typing import List, Tuple
+from maskpipe.entities.util import sanitize_value
 from spacy.tokens import Span
 from maskpipe.entities.entity import ContextPattern, Entity, Pattern
 # END GENERATED: imports
@@ -30,20 +30,15 @@ _CONTEXT_PATTERNS: list[ContextPattern] = [
 # END GENERATED: context_patterns
 
 # BEGIN GENERATED: validator
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
-
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    sanitized_value = sanitize_value(pattern_text, [('-', ''), (' ', '')])
     if len(sanitized_value) != 12:
         return False
     if not sanitized_value.isdigit():
         return False
     region_code = sanitized_value[:2]
-    if region_code not in {'18', '19', '20', '23', '15', '26', '12', '24', '13', '22', '16', '25', '21', '14', '28', '17', '11'}:
+    if region_code not in {'26', '20', '15', '19', '16', '13', '22', '11', '21', '24', '28', '14', '18', '25', '23', '17', '12'}:
         return False
     return True
 # END GENERATED: validator

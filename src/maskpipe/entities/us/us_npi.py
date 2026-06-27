@@ -1,7 +1,7 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.us.us_npi_recognizer.UsNpiRecognizer."""
 
 # BEGIN GENERATED: imports
-from typing import List, Tuple
+from maskpipe.entities.util import sanitize_value
 from spacy.tokens import Span
 from maskpipe.entities.entity import ContextPattern, Entity, Pattern
 # END GENERATED: imports
@@ -29,13 +29,8 @@ _CONTEXT_PATTERNS: list[ContextPattern] = [
 # END GENERATED: context_patterns
 
 # BEGIN GENERATED: validator
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
-
 def _invalidate(pattern_text: str) -> bool:
-    sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    sanitized_value = sanitize_value(pattern_text, [('-', ''), (' ', '')])
     if sanitized_value:
         body = sanitized_value[:-1] if len(sanitized_value) > 1 else sanitized_value
         if body and len(set(body)) == 1:
@@ -58,7 +53,7 @@ def _validator(span: Span) -> bool:
     pattern_text = span.text
     if _invalidate(pattern_text):
         return False
-    sanitized_value = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    sanitized_value = sanitize_value(pattern_text, [('-', ''), (' ', '')])
     return bool(_npi_luhn_checksum(sanitized_value))
 # END GENERATED: validator
 

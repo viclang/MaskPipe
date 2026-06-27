@@ -1,7 +1,7 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.us.aba_routing_recognizer.AbaRoutingRecognizer."""
 
 # BEGIN GENERATED: imports
-from typing import List, Tuple
+from maskpipe.entities.util import sanitize_value
 from spacy.tokens import Span
 from maskpipe.entities.entity import ContextPattern, Entity, Pattern
 # END GENERATED: imports
@@ -33,14 +33,9 @@ def _checksum(sanitized_value: str) -> bool:
         s += int(sanitized_value[idx]) * m
     return s % 10 == 0
 
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
-
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    sanitized_value = _sanitize_value(pattern_text, [('-', '')])
+    sanitized_value = sanitize_value(pattern_text, [('-', '')])
     return bool(_checksum(sanitized_value))
 # END GENERATED: validator
 

@@ -1,7 +1,7 @@
 """Entity generated from presidio_analyzer.predefined_recognizers.country_specific.spain.es_nie_recognizer.EsNieRecognizer."""
 
 # BEGIN GENERATED: imports
-from typing import List, Tuple
+from maskpipe.entities.util import sanitize_value
 from spacy.tokens import Span
 from maskpipe.entities.entity import ContextPattern, Entity, Pattern
 # END GENERATED: imports
@@ -25,14 +25,9 @@ _CONTEXT_PATTERNS: list[ContextPattern] = [
 # END GENERATED: context_patterns
 
 # BEGIN GENERATED: validator
-def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
-    for search_string, replacement_string in replacement_pairs:
-        text = text.replace(search_string, replacement_string)
-    return text
-
 def _validator(span: Span) -> bool:
     pattern_text = span.text
-    pattern_text = _sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    pattern_text = sanitize_value(pattern_text, [('-', ''), (' ', '')])
     letters = 'TRWAGMYFPDXBNJZSQVHLCKE'
     letter = pattern_text[-1]
     if not pattern_text[1:-1].isdigit or pattern_text[:1] not in 'XYZ':

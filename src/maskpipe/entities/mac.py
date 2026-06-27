@@ -1,41 +1,51 @@
-"""Entity generated from presidio_analyzer.predefined_recognizers.generic.mac_recognizer.MacAddressRecognizer."""
-
-# BEGIN GENERATED: imports
 import re
+
 from spacy.tokens import Span
-from maskpipe.entities.entity import ContextPattern, Entity, Pattern
-# END GENERATED: imports
 
-# BEGIN GENERATED: patterns
-_PATTERNS: list[Pattern] = [
-    {"score": 0.6, "pattern": [{"TEXT": {"REGEX": r"\b[0-9A-Fa-f]{2}([:-])(?:[0-9A-Fa-f]{2}\1){4}[0-9A-Fa-f]{2}\b"}}]},
-    {"score": 0.6, "pattern": [{"TEXT": {"REGEX": r"\b[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\b"}}]},
-]
-# END GENERATED: patterns
+from .entity import Entity
 
-# BEGIN GENERATED: context_patterns
-_CONTEXT_PATTERNS: list[ContextPattern] = [
-    {"pattern": [{"LEMMA": {"IN": ["mac", "ethernet"]}}], "score": 0.35},
-    {"pattern": [{"LEMMA": "mac"}, {"LEMMA": "address"}], "score": 0.35},
-    {"pattern": [{"LEMMA": "hardware"}, {"LEMMA": "address"}], "score": 0.35},
-    {"pattern": [{"LEMMA": "physical"}, {"LEMMA": "address"}], "score": 0.35},
-]
-# END GENERATED: context_patterns
-
-# BEGIN GENERATED: validator
-def _validator(span: Span) -> bool:
-    pattern_text = span.text
-    cleaned = re.sub('[:\\-.]', '', pattern_text)
-    if re.fullmatch('[0-9A-Fa-f]{12}', cleaned) is None:
+def _valid_mac(span: Span) -> bool:
+    """
+    Validate MAC address format (48-bit address with hex groups).
+    
+    Supports three formats:
+    - Colon-separated: 00:1A:2B:3C:4D:5E
+    - Hyphen-separated: 00-1A-2B-3C-4D-5E
+    - Cisco format (dot-separated groups of 4): 0012.3456.789A
+    
+    Rejects broadcast (FF:FF:FF:FF:FF:FF) and all-zeros (00:00:00:00:00:00) addresses.
+    """
+    mac_text = span.text.strip()
+    
+    # Remove separators and validate hex characters and length
+    cleaned = re.sub(r'[:\-.]', '', mac_text)
+    
+    # Must be exactly 12 hex characters
+    if not re.fullmatch(r"[0-9A-Fa-f]{12}", cleaned):
         return False
-    if cleaned.upper() == 'FFFFFFFFFFFF' or cleaned.upper() == '000000000000':
+    
+    # Reject broadcast (FF:FF:FF:FF:FF:FF) and all-zeros (00:00:00:00:00:00)
+    if cleaned.upper() in ('FFFFFFFFFFFF', '000000000000'):
         return False
+    
     return True
-# END GENERATED: validator
 
 MAC_ADDRESS = Entity(
     label="MAC_ADDRESS",
-    patterns=_PATTERNS,
-    validator=_validator,
-    context_patterns=_CONTEXT_PATTERNS,
+    patterns=[
+        # Colon or hyphen-separated: Uses backreference \1 to ensure consistent separator
+        {"score": 0.75, "pattern": [{"TEXT": {"REGEX": r"\b[0-9A-Fa-f]{2}([:-])(?:[0-9A-Fa-f]{2}\1){4}[0-9A-Fa-f]{2}\b"}}]},
+        # Cisco format: dot-separated groups of 4 hex digits
+        {"score": 0.70, "pattern": [{"TEXT": {"REGEX": r"\b[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\b"}}]},
+    ],
+    validator=_valid_mac,
+    context_patterns=[
+        {"pattern": [{"LEMMA": {"IN": ["mac", "mac-adres", "macaddress", "hardware", "physical"]}}]},
+        {"pattern": [{"LEMMA": "mac"}, {"LEMMA": "address"}]},
+        {"pattern": [{"LEMMA": "mac"}, {"LEMMA": "adres"}]},
+        {"pattern": [{"LEMMA": "hardware"}, {"LEMMA": "address"}]},
+        {"pattern": [{"LEMMA": "hardware"}, {"LEMMA": "adres"}]},
+        {"pattern": [{"LEMMA": "physical"}, {"LEMMA": "address"}]},
+        {"pattern": [{"LEMMA": "fysiek"}, {"LEMMA": "adres"}]},
+    ]
 )

@@ -12,6 +12,108 @@ logger = logging.getLogger(__name__)
 
 from .ast_utils import ArgumentSubstitutor
 
+# Known utility functions: maps extracted function name → (util_name, body_fingerprint).
+# Body fingerprint is ast.unparse() of the canonical body statements joined by "; ".
+# When the fingerprint matches, the inline definition is dropped and a util import is emitted.
+_UTIL_FINGERPRINTS: dict[str, tuple[str, str]] = {}
+
+def _build_util_fingerprints() -> None:
+    """Populate _UTIL_FINGERPRINTS by parsing the canonical implementations below."""
+    _CANONICAL = {
+        "_sanitize_value": (
+            "sanitize_value",
+            "def _sanitize_value(text, replacement_pairs):\n"
+            "    for search_string, replacement_string in replacement_pairs:\n"
+            "        text = text.replace(search_string, replacement_string)\n"
+            "    return text",
+        ),
+        "_luhn_checksum": (
+            "luhn_checksum",
+            "def _luhn_checksum(digits):\n"
+            "    nums = [int(d) for d in digits]\n"
+            "    odd_digits = nums[-1::-2]\n"
+            "    even_digits = nums[-2::-2]\n"
+            "    checksum = sum(odd_digits)\n"
+            "    for d in even_digits:\n"
+            "        checksum += sum(int(dig) for dig in str(d * 2))\n"
+            "    return checksum % 10 == 0",
+        ),
+        "_is_verhoeff_number": (
+            "is_verhoeff_number",
+            "def _is_verhoeff_number(input_number):\n"
+            "    __d__ = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 0, 6, 7, 8, 9, 5], [2, 3, 4, 0, 1, 7, 8, 9, 5, 6], [3, 4, 0, 1, 2, 8, 9, 5, 6, 7], [4, 0, 1, 2, 3, 9, 5, 6, 7, 8], [5, 9, 8, 7, 6, 0, 4, 3, 2, 1], [6, 5, 9, 8, 7, 1, 0, 4, 3, 2], [7, 6, 5, 9, 8, 2, 1, 0, 4, 3], [8, 7, 6, 5, 9, 3, 2, 1, 0, 4], [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]]\n"
+            "    __p__ = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 5, 7, 6, 2, 8, 3, 0, 9, 4], [5, 8, 0, 3, 7, 9, 6, 1, 4, 2], [8, 9, 1, 6, 0, 4, 3, 5, 2, 7], [9, 4, 5, 3, 1, 2, 6, 8, 7, 0], [4, 2, 8, 6, 5, 7, 3, 9, 0, 1], [2, 7, 9, 3, 8, 0, 6, 4, 1, 5], [7, 0, 4, 6, 9, 1, 3, 2, 5, 8]]\n"
+            "    __inv__ = [0, 4, 3, 2, 1, 5, 6, 7, 8, 9]\n"
+            "    c = 0\n"
+            "    inverted_number = list(map(int, reversed(str(input_number))))\n"
+            "    for i in range(len(inverted_number)):\n"
+            "        c = __d__[c][__p__[i % 8][inverted_number[i]]]\n"
+            "    return __inv__[c] == 0",
+        ),
+    }
+    for extracted_name, (util_name, src) in _CANONICAL.items():
+        try:
+            tree = ast.parse(src)
+            func = next(n for n in tree.body if isinstance(n, ast.FunctionDef))
+            fingerprint = "; ".join(ast.unparse(stmt) for stmt in func.body)
+            _UTIL_FINGERPRINTS[extracted_name] = (util_name, fingerprint)
+        except Exception:
+            logger.exception("_build_util_fingerprints: failed to parse canonical for %s", extracted_name)
+
+_build_util_fingerprints()
+
+
+def replace_util_functions(src: str) -> tuple[str, list[str]]:
+    """Remove inlined utility functions whose bodies match a canonical util implementation.
+
+    Returns the cleaned source and a list of import strings to add (e.g.
+    ``["from maskpipe.entities.util import sanitize_value"]``).
+    Call sites are renamed from the extracted name (_sanitize_value) to the util name (sanitize_value).
+    """
+    if not _UTIL_FINGERPRINTS:
+        return src, []
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return src, []
+
+    to_replace: dict[str, str] = {}  # extracted_name → util_name
+
+    for node in tree.body:
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        if node.name not in _UTIL_FINGERPRINTS:
+            continue
+        util_name, expected_fp = _UTIL_FINGERPRINTS[node.name]
+        actual_fp = "; ".join(ast.unparse(stmt) for stmt in node.body)
+        if actual_fp == expected_fp:
+            to_replace[node.name] = util_name
+
+    if not to_replace:
+        return src, []
+
+    # Remove matched function definitions
+    tree.body = [
+        node for node in tree.body
+        if not (isinstance(node, ast.FunctionDef) and node.name in to_replace)
+    ]
+
+    # Rename call sites
+    class _Renamer(ast.NodeTransformer):
+        def visit_Name(self, node):
+            if node.id in to_replace:
+                node.id = to_replace[node.id]
+            return node
+
+    tree = _Renamer().visit(tree)
+    ast.fix_missing_locations(tree)
+
+    imports = [
+        f"from maskpipe.entities.util import {util_name}"
+        for util_name in dict.fromkeys(to_replace.values())  # preserve order, dedupe
+    ]
+    return fix_blank_lines(ast.unparse(tree)), imports
+
 RECOGNIZER_RESULT_FALLBACK = """\
 class _RecognizerResult:
     def __init__(self, entity_type, start, end, score, **_):
@@ -147,7 +249,7 @@ class _CallSiteReplacer(ast.NodeTransformer):
             return ast.copy_location(inlined, node)
         return node
 
-def inline_single_return_functions(src: str, keep: set[str] = frozenset()) -> str:
+def inline_single_return_functions(src: str, keep: set[str] = frozenset()) -> str:  # ty:ignore[invalid-parameter-default]
     """Inline top-level functions whose entire body is a single return expression."""
     try:
         tree = ast.parse(src)
@@ -295,6 +397,21 @@ def fold_helpers_into_validator(src: str) -> str:
         logger.exception("fold_helpers_into_validator failed")
         return src
 
+
+def has_super_calls(src: str) -> bool:
+    """Return True if the source contains any super() call — indicates unresolvable inheritance."""
+    try:
+        tree = ast.parse(src)
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "super"
+            ):
+                return True
+    except SyntaxError:
+        pass
+    return False
 
 def remove_uncalled_functions(src: str, keep: set[str]) -> str:
     try:
