@@ -1,6 +1,17 @@
 from .entity import Entity
 from . import nl
 from . import us
+from . import australia
+from . import finland
+from . import india
+from . import italy
+from . import korea
+from . import nigeria
+from . import poland
+from . import singapore
+from . import spain
+from . import thai
+from . import uk
 from .credit_card import CREDIT_CARD
 from .crypto import CRYPTO
 from .date import DATE
@@ -27,4 +38,15 @@ __all__ = [
     "NUMBER",
     "PHONE_NUMBER",
     "URL",
+    "australia",
+    "finland",
+    "india",
+    "italy",
+    "korea",
+    "nigeria",
+    "poland",
+    "singapore",
+    "spain",
+    "thai",
+    "uk",
 ]

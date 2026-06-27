@@ -28,7 +28,7 @@ Derived from the entity label, not the recognizer class name. Country prefixes a
 
 | Label | Output path |
 |---|---|
-| `CREDIT_CARD` | `src/maskpipe/entities/generated/credit_card.py` |
+| `CREDIT_CARD` | `src/maskpipe/entities/credit_card.py` |
 | `US_SSN` | `src/maskpipe/entities/us/ssn.py` |
 | `AU_ABN` | `src/maskpipe/entities/australia/abn.py` |
 | `FI_PERSONAL_IDENTITY_CODE` | `src/maskpipe/entities/finland/personal_identity_code.py` |

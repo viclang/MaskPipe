@@ -232,31 +232,6 @@ def _is_thin_invalidate_wrapper(validator_def: ast.FunctionDef) -> bool:
     )
 
 
-def _build_invalidate_inline(inv_node: ast.FunctionDef) -> list[ast.stmt]:
-    """Body of _invalidate prepared for inlining at an `if _invalidate(...): return False` site.
-
-    - Terminal `return False` (valid path) is dropped so execution falls through to the caller.
-    - All remaining `return True` (invalid path) are changed to `return False`.
-    """
-    body = list(inv_node.body)
-    if (body
-            and isinstance(body[-1], ast.Return)
-            and isinstance(body[-1].value, ast.Constant)
-            and body[-1].value.value is False):
-        body = body[:-1]
-
-    class _TrueToFalse(ast.NodeTransformer):
-        def visit_Return(self, node):
-            if isinstance(node.value, ast.Constant) and node.value.value is True:
-                node.value = ast.Constant(value=False)
-            return node
-        def visit_FunctionDef(self, node):
-            return node
-        def visit_AsyncFunctionDef(self, node):
-            return node
-
-    return [_TrueToFalse().visit(copy.deepcopy(s)) for s in body]
-
 
 def fold_helpers_into_validator(src: str) -> str:
     """Inline _invalidate body into _validator and remove _invalidate.
@@ -298,46 +273,21 @@ def fold_helpers_into_validator(src: str) -> str:
             None,
         )
 
-        if validator is not None:
-            if _is_thin_invalidate_wrapper(validator):
-                # Replace entire thin-wrapper body with _invalidate body, full True↔False flip
-                body = validator.body
-                orig_param = inv_node.args.args[0].arg if inv_node.args.args else "pattern_text"
-                flipped = [_ReturnFlipper().visit(copy.deepcopy(s)) for s in inv_node.body]
-                assign = ast.parse(f"{orig_param} = span.text").body[0]
-                validator.body = [assign] + flipped
-            else:
-                # Inline at the injected `if _invalidate(arg): return False` site
-                inline_stmts = _build_invalidate_inline(inv_node)
+        inlined = False
+        if validator is not None and _is_thin_invalidate_wrapper(validator):
+            # Replace entire thin-wrapper body with _invalidate body, full True↔False flip
+            orig_param = inv_node.args.args[0].arg if inv_node.args.args else "pattern_text"
+            flipped = [_ReturnFlipper().visit(copy.deepcopy(s)) for s in inv_node.body]
+            assign = ast.parse(f"{orig_param} = span.text").body[0]
+            validator.body = [assign] + flipped
+            inlined = True
 
-                class _InlineAtCallSite(ast.NodeTransformer):
-                    def visit_FunctionDef(self, node):
-                        new_body: list[ast.stmt] = []
-                        for stmt in node.body:
-                            if (
-                                isinstance(stmt, ast.If)
-                                and isinstance(stmt.test, ast.Call)
-                                and isinstance(stmt.test.func, ast.Name)
-                                and stmt.test.func.id == "_invalidate"
-                                and not stmt.orelse
-                                and len(stmt.body) == 1
-                                and isinstance(stmt.body[0], ast.Return)
-                                and isinstance(stmt.body[0].value, ast.Constant)
-                                and stmt.body[0].value.value is False
-                            ):
-                                new_body.extend(copy.deepcopy(inline_stmts))
-                            else:
-                                new_body.append(stmt)
-                        node.body = new_body
-                        return node
-
-                _InlineAtCallSite().visit(validator)
-
-        # Remove _invalidate definition
-        tree.body = [
-            n for n in tree.body
-            if not (isinstance(n, ast.FunctionDef) and n.name == "_invalidate")
-        ]
+        # Remove _invalidate only when its body was inlined into _validator
+        if inlined:
+            tree.body = [
+                n for n in tree.body
+                if not (isinstance(n, ast.FunctionDef) and n.name == "_invalidate")
+            ]
 
         ast.fix_missing_locations(tree)
         return fix_blank_lines(ast.unparse(tree))

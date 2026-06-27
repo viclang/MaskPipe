@@ -209,8 +209,18 @@ class PresidioConverter:
     ) -> Optional[List[ContextPattern]]:
         if not context:
             return None
-        words = [w.lower() for w in context]
-        return [{"pattern": [{"LEMMA": {"IN": words}}], "score": self.context_boost}]
+        single_words: List[str] = []
+        patterns: List[ContextPattern] = []
+        for phrase in context:
+            tokens = phrase.lower().split()
+            if len(tokens) == 1:
+                single_words.append(tokens[0])
+            else:
+                # Multi-word phrase: one token dict per word so spaCy matches across tokens
+                patterns.append({"pattern": [{"LEMMA": t} for t in tokens], "score": self.context_boost})
+        if single_words:
+            patterns.insert(0, {"pattern": [{"LEMMA": {"IN": single_words}}], "score": self.context_boost})
+        return patterns or None
 
     def _convert_entity_recognizer(self, recognizer: EntityRecognizer) -> Entity:
         entities = recognizer.supported_entities

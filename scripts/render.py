@@ -48,7 +48,7 @@ def _literal(v) -> str:
 
 
 def _format_pattern(p: dict) -> str:
-    indent = "        "
+    indent = "    "
     score = p.get("score", 0.5)
     tokens = p["pattern"]
     if len(tokens) == 1:
@@ -58,7 +58,7 @@ def _format_pattern(p: dict) -> str:
 
 
 def _format_context_pattern(cp: dict) -> str:
-    indent = "        "
+    indent = "    "
     parts = [f'"pattern": {_literal(cp["pattern"])}']
     if "score" in cp:
         parts.append(f'"score": {cp["score"]}')
@@ -90,7 +90,11 @@ def _import_sort_key(imp: str) -> tuple[int, str]:
 
 
 def _build_imports_block(validator: ValidatorComponent | None, analyze: AnalyzeComponent | None) -> str:
-    """Collect imports from validator and analyze components, deduped, stdlib-first, multi-line blocks last."""
+    """Collect imports from validator and analyze components, deduped, stdlib-first, multi-line blocks last.
+
+    Same-module `from X import a` / `from X import b` lines are merged into
+    `from X import a, b` to comply with PEP 8.
+    """
     raw: list[str] = []
     if analyze:
         raw.append("from spacy.tokens import Doc")
@@ -99,16 +103,28 @@ def _build_imports_block(validator: ValidatorComponent | None, analyze: AnalyzeC
     if analyze:
         raw.extend(analyze.imports)
 
-    single: list[str] = []
+    from_imports: dict[str, set[str]] = {}
+    bare: list[str] = []
     multi: list[str] = []
     seen: set[str] = set()
+
     for imp in raw:
         if imp in seen:
             continue
         seen.add(imp)
-        (multi if "\n" in imp else single).append(imp)
+        if "\n" in imp:
+            multi.append(imp)
+        elif imp.startswith("from ") and " import " in imp:
+            module, _, names_str = imp[5:].partition(" import ")
+            from_imports.setdefault(module, set()).update(
+                n.strip() for n in names_str.split(",")
+            )
+        else:
+            bare.append(imp)
 
-    single.sort(key=_import_sort_key)
+    merged = [f"from {mod} import {', '.join(sorted(names))}" for mod, names in from_imports.items()]
+    single = sorted(bare + merged, key=_import_sort_key)
+
     lines: list[str] = list(single)
     for imp in multi:
         lines.extend(["", imp, ""])
@@ -122,13 +138,23 @@ def _build_imports_block(validator: ValidatorComponent | None, analyze: AnalyzeC
 def render(entity: RecognizerEntity) -> str:
     validator = entity.get(ValidatorComponent)
     analyze = entity.get(AnalyzeComponent)
+    patterns = entity.get(PatternsComponent)
+    context = entity.get(ContextComponent)
+    imports_block = _build_imports_block(validator, analyze)
+    entity_import_names = ["Entity"]
+    if patterns:
+        entity_import_names.append("Pattern")
+    if context:
+        entity_import_names.append("ContextPattern")
+    entity_import = f"from maskpipe.entities.entity import {', '.join(sorted(entity_import_names))}"
     src = _env.get_template("entity.j2").render(
         identity=entity.get(IdentityComponent),
-        patterns=entity.get(PatternsComponent),
-        context=entity.get(ContextComponent),
+        patterns=patterns,
+        context=context,
         validator=validator,
         validator_todo=entity.get(ValidatorTodoComponent),
         analyze=analyze,
-        imports_block=_build_imports_block(validator, analyze),
+        imports_block=imports_block,
+        entity_import=entity_import,
     )
     return re.sub(r"\n{3,}", "\n\n", src)

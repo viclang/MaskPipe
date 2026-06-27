@@ -1,52 +1,52 @@
-"""US ABA Routing Number entity.
+"""Entity generated from presidio_analyzer.predefined_recognizers.country_specific.us.aba_routing_recognizer.AbaRoutingRecognizer."""
 
-Recognizes ABA (American Banking Association) routing numbers
-also known as routing transit numbers (RTN).
-Includes Luhn-like checksum validation.
-"""
+# BEGIN GENERATED: imports
+from typing import List, Tuple
 from spacy.tokens import Span
+from maskpipe.entities.entity import ContextPattern, Entity, Pattern
+# END GENERATED: imports
 
-from ..entity import Entity
+# BEGIN GENERATED: patterns
+_PATTERNS: list[Pattern] = [
+    {"score": 0.05, "pattern": [{"TEXT": {"REGEX": r"\b[0123678]\d{8}\b"}}]},
+    {"score": 0.3, "pattern": [{"TEXT": {"REGEX": r"\b[0123678]\d{3}-\d{4}-\d\b"}}]},
+    {"score": 0.3, "pattern": [
+        {"TEXT": {"REGEX": r"\b[0123678]\d{3}\b"}},
+        {"TEXT": "-"},
+        {"TEXT": {"REGEX": r"\b\d{4}\b"}},
+        {"TEXT": "-"},
+        {"TEXT": {"REGEX": r"\b\d\b"}},
+    ]},
+]
+# END GENERATED: patterns
 
-def _valid_aba_routing(span: Span) -> bool:
-    """
-    Validate ABA routing number using checksum algorithm.
+# BEGIN GENERATED: context_patterns
+_CONTEXT_PATTERNS: list[ContextPattern] = [
+    {"pattern": [{"LEMMA": {"IN": ["aba", "routing", "abarouting", "association", "bankrouting"]}}], "score": 0.35},
+]
+# END GENERATED: context_patterns
 
-    The checksum multiplies digits by [3, 7, 1, 3, 7, 1, 3, 7, 1]
-    and checks if the sum mod 10 equals 0.
-    """
-    text = span.text.strip()
-    digits = [c for c in text if c.isdigit()]
-    if len(digits) != 9:
-        return False
+# BEGIN GENERATED: validator
+def _checksum(sanitized_value: str) -> bool:
+    s = 0
+    for idx, m in enumerate([3, 7, 1, 3, 7, 1, 3, 7, 1]):
+        s += int(sanitized_value[idx]) * m
+    return s % 10 == 0
 
-    weights = [3, 7, 1, 3, 7, 1, 3, 7, 1]
-    checksum = sum(int(d) * w for d, w in zip(digits, weights))
-    return checksum % 10 == 0
+def _sanitize_value(text: str, replacement_pairs: List[Tuple[str, str]]) -> str:
+    for search_string, replacement_string in replacement_pairs:
+        text = text.replace(search_string, replacement_string)
+    return text
+
+def _validator(span: Span) -> bool:
+    pattern_text = span.text
+    sanitized_value = _sanitize_value(pattern_text, [('-', '')])
+    return bool(_checksum(sanitized_value))
+# END GENERATED: validator
 
 ABA_ROUTING_NUMBER = Entity(
     label="ABA_ROUTING_NUMBER",
-    patterns=[
-        # Medium confidence: XXX-XXX-XX format
-        {
-            "score": 0.5,
-            "pattern": [
-                {"TEXT": {"REGEX": r"\b[0123678]\d{3}-\d{4}-\d\b"}},
-            ],
-        },
-        # Weak confidence: 9 consecutive digits starting with 0-3 or 6-8
-        {
-            "score": 0.3,
-            "pattern": [
-                {"TEXT": {"REGEX": r"\b[0123678]\d{8}\b"}},
-            ],
-        },
-    ],
-    validator=_valid_aba_routing,
-    context_patterns=[
-        {"pattern": [{"LOWER": {"FUZZY": "routing"}}]},
-        {"pattern": [{"LOWER": {"FUZZY": "aba"}}]},
-        {"pattern": [{"LOWER": {"FUZZY": "bank"}}]},
-        {"pattern": [{"LOWER": {"FUZZY": "transit"}}]},
-    ],
+    patterns=_PATTERNS,
+    validator=_validator,
+    context_patterns=_CONTEXT_PATTERNS,
 )

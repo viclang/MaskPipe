@@ -1,21 +1,47 @@
 """Entity generated from {{ identity.module }}.{{ identity.class_name }}."""
-{% if imports_block %}
-{{ imports_block }}
+
+# BEGIN GENERATED: imports
+{% if imports_block %}{{ imports_block }}
+{% endif %}{{ entity_import }}
+# END GENERATED: imports
+{% if patterns %}
+
+# BEGIN GENERATED: patterns
+_PATTERNS: list[Pattern] = [
+{% for p in patterns.patterns %}
+{{ p | format_pattern }},
+{% endfor %}
+]
+# END GENERATED: patterns
 {% endif %}
-from maskpipe.entities.entity import Entity
+{% if context %}
+
+# BEGIN GENERATED: context_patterns
+_CONTEXT_PATTERNS: list[ContextPattern] = [
+{% for cp in context.context_patterns %}
+{{ cp | format_context_pattern }},
+{% endfor %}
+]
+# END GENERATED: context_patterns
+{% endif %}
 {% if validator %}
 
+# BEGIN GENERATED: validator
 {{ validator.src }}
+# END GENERATED: validator
 {% elif validator_todo %}
 
+# BEGIN GENERATED: validator
 # TODO: port validator logic from:
 {% for method in validator_todo.methods %}
 #   {{ identity.module }}.{{ identity.class_name }}.{{ method }}
 {% endfor %}
 _validator = None
+# END GENERATED: validator
 {% endif %}
 {% if analyze %}
 
+# BEGIN GENERATED: custom_matcher
 {{ analyze.src }}
 
 def _custom_matcher(doc: Doc) -> list[tuple[int, int, float]]:
@@ -25,16 +51,13 @@ def _custom_matcher(doc: Doc) -> list[tuple[int, int, float]]:
         if span:
             spans.append((span.start, span.end, score))
     return spans
+# END GENERATED: custom_matcher
 {% endif %}
 
 {{ identity.var_name }} = Entity(
     label="{{ identity.label }}",
 {% if patterns %}
-    patterns=[
-{% for p in patterns.patterns %}
-{{ p | format_pattern }},
-{% endfor %}
-    ],
+    patterns=_PATTERNS,
 {% endif %}
 {% if analyze %}
     custom_matcher=_custom_matcher,
@@ -44,10 +67,6 @@ def _custom_matcher(doc: Doc) -> list[tuple[int, int, float]]:
     validator=None,
 {% endif %}
 {% if context %}
-    context_patterns=[
-{% for cp in context.context_patterns %}
-{{ cp | format_context_pattern }},
-{% endfor %}
-    ],
+    context_patterns=_CONTEXT_PATTERNS,
 {% endif %}
 )

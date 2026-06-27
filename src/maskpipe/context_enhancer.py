@@ -32,7 +32,7 @@ class ContextEnhancer(Pipe):
         name: str = "context_enhancer",
         spans_key: str = "sc",
         style: str = "span",
-        confidence_boost: float = 0.35,
+        default_score: float = 0.35,
         min_enhanced_score: float = 0.4,
         context_window: Tuple[int, int] = (5, 3),
         allow_dependency_link: bool = True,
@@ -44,7 +44,7 @@ class ContextEnhancer(Pipe):
             name: Name of the component
             patterns: List of context patterns for enhancement/invalidation
             added_context_words: Additional context words to append to doc
-            confidence_boost: Score increase for enhanced spans
+            default_score: Score increase for enhanced spans
             min_enhanced_score: Minimum score after enhancement
             context_window: (before, after) token window for context matching
             allow_dependency_link: If True, allows dependency-based context matching
@@ -53,7 +53,7 @@ class ContextEnhancer(Pipe):
         """
         self.nlp = nlp
         self.name = name
-        self.confidence_boost = confidence_boost
+        self.default_score = default_score
         self.min_enhanced_score = min_enhanced_score
         self.context_before, self.context_after = context_window
         self.allow_dependency_link = allow_dependency_link
@@ -200,7 +200,7 @@ class ContextEnhancer(Pipe):
         # Calculate new score
         original_score = getattr(span._, "score", 1.0)
         new_score = min(
-            max(original_score + self.confidence_boost, self.min_enhanced_score),
+            max(original_score + self.default_score, self.min_enhanced_score),
             1.0
         )
         
