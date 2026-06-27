@@ -5,7 +5,6 @@ from typing import (
     Callable,
     Dict,
     Union,
-    cast,
 )
 
 import srsly
@@ -82,7 +81,7 @@ class Anonymizer(Pipe):
             If no replacement is registered for a label, the default replacement
             is ``[LABEL]``.
         """
-        self._redactors.update(redactors)
+        self._redactors.update({k: self._normalize_redactor(v) for k, v in redactors.items()})
 
     def remove(self, label: str) -> None:
         """
@@ -97,7 +96,7 @@ class Anonymizer(Pipe):
 
     def clear(self) -> None:
         """Remove all registered redactors."""
-        self._redactors: Dict[str, Union[str, NoArgReplacement, TextReplacement]] = {}
+        self._redactors: Dict[str, TextReplacement] = {}
 
     def _get_spans(self, doc: Doc) -> Iterable[Span]:
         if self.style == "ent":
@@ -105,32 +104,28 @@ class Anonymizer(Pipe):
         spans = list(doc.spans.get(self.spans_key, []))
         return self.spans_filter(spans)
 
+    @staticmethod
+    def _normalize_redactor(redactor: Union[str, NoArgReplacement, TextReplacement]) -> TextReplacement:
+        if isinstance(redactor, str):
+            s = redactor
+            return lambda _: s
+        sig = inspect.signature(redactor)
+        params = [p for p in sig.parameters.values() if p.name != "self"]
+        if not params:
+            f = redactor
+            return lambda _: f()
+        if len(params) == 1:
+            return redactor
+        raise TypeError(
+            f"Redactor must be a str or a callable taking zero or one positional argument, "
+            f"got {len(params)} parameters"
+        )
+
     def _apply_redactor(self, label: str, text: str) -> str:
         redactor = self._redactors.get(label)
         if redactor is None:
             return f"[{label.upper()}]"
-
-        if isinstance(redactor, str):
-            return redactor
-
-        sig = inspect.signature(redactor)
-        params = tuple(sig.parameters.values())
-
-        if params and params[0].name == "self":
-            params = params[1:]
-
-        if not params:
-            no_arg_redactor = cast(NoArgReplacement, redactor)
-            return no_arg_redactor()
-
-        if len(params) == 1:
-            text_redactor = cast(TextReplacement, redactor)
-            return text_redactor(text)
-
-        raise TypeError(
-            f"Replacement for label {label!r} must be a str or a callable "
-            "taking zero or one positional argument"
-        )
+        return redactor(text)
 
     def _make_masked_doc(self, original_doc: Doc) -> str:
         sensitive_spans = sorted(self._get_spans(original_doc), key=lambda span: span.start)
