@@ -5,13 +5,13 @@ Change this file when presidio renames or restructures validate_result / invalid
 import ast
 import logging
 
-logger = logging.getLogger(__name__)
-
 from presidio_analyzer import PatternRecognizer
-
 from .ast_utils import deduplicate
 from .extraction import extract_instance_method
 from .source_cleanup import fix_blank_lines, fold_helpers_into_validator, has_super_calls, normalize_bool_tristate, remove_unused_imports, replace_util_functions
+
+logger = logging.getLogger(__name__)
+
 
 def _adapt_first_param_to_span(src: str, func_name: str) -> str:
     """Change func_name(original_param: str, ...) to func_name(span: Span, ...) and prepend original_param = span.text."""

@@ -11,8 +11,8 @@ try:
     from presidio_analyzer import EntityRecognizer, PatternRecognizer
 except ImportError:
     raise ImportError(
-        "presidio-analyzer is required to use maskpipe.presidio. "
-        "Install with: pip install maskpipe[presidio]"
+        "presidio-analyzer is required to use presidio_converter. "
+        "Install with: uv sync --group codegen"
     )
 
 
@@ -22,7 +22,7 @@ class PresidioConverter:
     Supports both PatternRecognizer (translated to spaCy token patterns)
     and EntityRecognizer (bridged via custom_matcher using analyze()).
 
-    Requires: pip install maskpipe[presidio]
+    Requires: uv sync --group codegen
 
     Args:
         context_boost: Score added to context_patterns. Default 0.35.

@@ -7,10 +7,11 @@ import ast
 import copy
 import logging
 import re
+from .ast_utils import ArgumentSubstitutor
 
 logger = logging.getLogger(__name__)
 
-from .ast_utils import ArgumentSubstitutor
+
 
 # Known utility functions: maps extracted function name → (util_name, body_fingerprint).
 # Body fingerprint is ast.unparse() of the canonical body statements joined by "; ".

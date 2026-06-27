@@ -16,17 +16,17 @@ import re
 import sys
 from pathlib import Path
 
-try:
-    from maskpipe.presidio import PresidioConverter  # ty: ignore[unresolved-import]
-    from presidio_analyzer import EntityRecognizer
-    import presidio_analyzer.predefined_recognizers  # noqa: F401 — registers all subclasses
-except ImportError:
-    print("error: presidio-analyzer is required. Install with: pip install maskpipe[presidio]", file=sys.stderr)
-    sys.exit(1)
-
 # scripts/ is not a package, so add it to sys.path for sibling imports
 sys.path.insert(0, str(Path(__file__).parent))
 from codegen import generate  # noqa: E402
+
+try:
+    from presidio_converter import PresidioConverter
+    from presidio_analyzer import EntityRecognizer
+    import presidio_analyzer.predefined_recognizers  # noqa: F401 — registers all subclasses
+except ImportError:
+    print("error: presidio-analyzer is required. Install with: uv sync --group codegen", file=sys.stderr)
+    sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
