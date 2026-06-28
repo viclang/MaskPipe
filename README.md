@@ -21,7 +21,7 @@ Bring your own detection source:
 | OpenMed | Clinical NER and HIPAA-aware de-identification for healthcare; detects clinical entities (diseases, medications, anatomy) alongside patient PII in 13 languages |
 | Built-in rules | Rule-based detection for 13+ countries without an external model; high-precision validators for country-specific IDs (SSN, passport, national ID, VAT) |
 
-Each source produces character-offset spans with a label and score. `DocBuilder` normalises these into spaCy docs. The maskpipe pipeline then applies context-aware scoring, resolves overlapping spans, validates matches, and writes `doc._.masked`.
+Each source produces character-offset spans with a label and score. `DocBuilder` normalizes these into spaCy docs. The maskpipe pipeline then applies context-aware scoring, resolves overlapping spans, validates matches, and writes `doc._.masked`.
 
 ## What MaskPipe Does
 
