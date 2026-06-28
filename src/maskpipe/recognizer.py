@@ -38,7 +38,6 @@ class Pattern(TypedDict):
 
 CustomMatcherFunc = Callable[[Doc], List[Span]]
 
-SpansFilterFunc = Callable[[Iterable[Span], Iterable[Span]], Iterable[Span]]
 
 # Compatibility function for registry
 def anonymacy_levenshtein_compare(s1: str, s2: str, max_dist: int) -> bool:
@@ -50,7 +49,6 @@ def make_levenshtein_compare():
 
 DEFAULT_RECOGNIZER_CONFIG = {
     "spans_key": SPANS_KEY,
-    "spans_filter": None,
     "phrase_matcher_attr": None,
     "matcher_fuzzy_compare": {"@misc": "spacy.levenshtein_compare.v1"},
     "default_score": 0.6,
@@ -66,7 +64,6 @@ class Recognizer(Pipe):
         nlp: Language,
         name: str = "recognizer",
         spans_key: str = SPANS_KEY,
-        spans_filter: Optional[SpansFilterFunc] = None,
         phrase_matcher_attr: Optional[Union[int, str]] = None,
         matcher_fuzzy_compare: Callable = anonymacy_levenshtein_compare,
         default_score: float = 0.6,
@@ -76,7 +73,6 @@ class Recognizer(Pipe):
         self.nlp = nlp
         self.name = name
         self.spans_key = spans_key
-        self.spans_filter = spans_filter
         self.default_score = min(default_score, 1.0)
         self.phrase_matcher_attr = phrase_matcher_attr
         self.matcher_fuzzy_compare = matcher_fuzzy_compare
@@ -195,9 +191,7 @@ class Recognizer(Pipe):
         spans = []
         if self.spans_key in doc.spans and not self.overwrite:
             spans = doc.spans[self.spans_key]
-        spans.extend(
-            self.spans_filter(spans, matches) if self.spans_filter else matches
-        )
+        spans.extend(matches)
         doc.spans[self.spans_key] = spans
 
     def add_patterns(self, patterns: List[Pattern]) -> None:
