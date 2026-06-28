@@ -19,7 +19,7 @@
 
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.9"
 app = marimo.App(width="medium")
 
 
@@ -75,7 +75,7 @@ def _(Faker, GLiNER, PipelineBuilder, entities, nl, spacy):
     fake = Faker("nl_NL")
 
     builder.add_entities([
-        nl.BSN.replace(redactor=fake.ssn),
+        nl.NL_BSN.replace(redactor=fake.ssn),
         entities.PHONE_NUMBER.replace(redactor=fake.phone_number),
         entities.DATE,
     ])
