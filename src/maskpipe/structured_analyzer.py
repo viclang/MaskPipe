@@ -1,14 +1,17 @@
 import random
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import (
     Any,
     Callable,
     Dict,
     List,
+    NotRequired,
     Optional,
+    Set,
     TypedDict,
 )
 from spacy.language import Language
+from .constants import SPANS_KEY
 from .doc_builder import DocBuilder
 from .entity_mapper import (
     BaseEntityMapper,
@@ -18,15 +21,22 @@ from .entity_mapper import (
     HF_NER_MAPPER,
     OPENMED_MAPPER,
 )
+from .span_filter import hierarchical_merge_filter
 
-DOC_ANALYZER_DEFAULT_SPANS_KEY = "sc"
+NON_PII_LABEL = "NON_PII"
+DEFAULT_RANDOM_STATE = 123
+
+
+class LabelStats(TypedDict):
+    coverage: float
+    score: float
+
 
 class ColumnAnalysis(TypedDict):
     label: str
-    coverage: float
-    score: float
-    entity_distribution: Dict[str, int]
-    entities: List[EntityResult]
+    score: float  # coverage × average entity confidence for the winning label
+    entity_distribution: Dict[str, LabelStats]
+    entities: NotRequired[List[EntityResult]]
 
 class StructuredAnalyzer:
 
@@ -35,23 +45,24 @@ class StructuredAnalyzer:
         nlp: Language,
         *,
         label_mapping: Optional[Dict[str, str]] = None,
-        spans_key: Optional[str] = DOC_ANALYZER_DEFAULT_SPANS_KEY,
-        annotate_ents: bool = False,
+        spans_key: str = SPANS_KEY,
         default_score: float = 0.6,
     ):
         self.nlp = nlp
         self.label_mapping = label_mapping
         self.spans_key = spans_key
-        self.annotate_ents = annotate_ents
         self.default_score = default_score
 
     def analyze(
         self,
         data: Dict[str, List[Any]],
-        n: Optional[int] = None,
         batch_extractor: Optional[Callable[[List[str]], List[Any]]] = None,
+        *,
+        n: Optional[int] = None,
         entity_mapper: Optional[BaseEntityMapper] = None,
         alignment_mode: str = "strict",
+        random_state: Optional[int] = DEFAULT_RANDOM_STATE,
+        include_entities: bool = False,
     ) -> Dict[str, ColumnAnalysis]:
         if not data:
             return {}
@@ -62,11 +73,13 @@ class StructuredAnalyzer:
                 return {}
             n = len(first_values)
 
+        rng = random.Random(random_state)
         results: Dict[str, ColumnAnalysis] = {}
 
         for column, values in data.items():
-            sample_size = min(n, len(values))
-            sampled_values = random.sample(values, sample_size)
+            non_null_values = [v for v in values if v is not None and str(v).strip()]
+            sample_size = min(n, len(non_null_values))
+            sampled_values = [str(v) for v in rng.sample(non_null_values, sample_size)]
 
             extracted = (
                 batch_extractor(sampled_values) if batch_extractor else None
@@ -80,53 +93,122 @@ class StructuredAnalyzer:
                 alignment_mode=alignment_mode,
                 label_mapping=self.label_mapping,
                 spans_key=self.spans_key,
-                annotate_ents=self.annotate_ents,
                 default_score=self.default_score,
             )
 
             all_entities: List[EntityResult] = []
-            cell_labels: List[str] = []
+            cell_label_sets: List[Set[str]] = []
 
             for doc in self.nlp.pipe(docs):
-                cell_label, doc_entities = self._process_doc(doc)
-                cell_labels.append(cell_label)
+                cell_label_set, doc_entities = self._process_doc(doc)
+                cell_label_sets.append(cell_label_set)
                 all_entities.extend(doc_entities)
 
-            column_analysis = self._classify_column(cell_labels, all_entities)
-            results[column] = column_analysis
+            results[column] = self._classify_column(cell_label_sets, all_entities, include_entities)
 
         return results
 
-    def analyze_gliner(self, data: Dict[str, List[Any]], batch_extractor: Callable[[List[str]], List[Any]], **kwargs) -> "Dict[str, ColumnAnalysis]":
+    def analyze_gliner(
+        self,
+        data: Dict[str, List[Any]],
+        batch_extractor: Callable[[List[str]], List[Any]],
+        *,
+        n: Optional[int] = None,
+        alignment_mode: str = "strict",
+        random_state: Optional[int] = DEFAULT_RANDOM_STATE,
+        include_entities: bool = False,
+    ) -> Dict[str, ColumnAnalysis]:
         """Analyze with GLiNER. ``batch_extractor`` should return raw ``predict_entities()`` output."""
-        return self.analyze(data, batch_extractor=batch_extractor, entity_mapper=GLINER_MAPPER, **kwargs)
+        return self.analyze(
+            data,
+            batch_extractor=batch_extractor,
+            n=n,
+            entity_mapper=GLINER_MAPPER,
+            alignment_mode=alignment_mode,
+            random_state=random_state,
+            include_entities=include_entities,
+        )
 
-    def analyze_transformers(self, data: Dict[str, List[Any]], batch_extractor: Callable[[List[str]], List[Any]], **kwargs) -> "Dict[str, ColumnAnalysis]":
+    def analyze_transformers(
+        self,
+        data: Dict[str, List[Any]],
+        batch_extractor: Callable[[List[str]], List[Any]],
+        *,
+        n: Optional[int] = None,
+        alignment_mode: str = "strict",
+        random_state: Optional[int] = DEFAULT_RANDOM_STATE,
+        include_entities: bool = False,
+    ) -> Dict[str, ColumnAnalysis]:
         """Analyze with HuggingFace NER pipeline output."""
-        return self.analyze(data, batch_extractor=batch_extractor, entity_mapper=HF_NER_MAPPER, **kwargs)
+        return self.analyze(
+            data,
+            batch_extractor=batch_extractor,
+            n=n,
+            entity_mapper=HF_NER_MAPPER,
+            alignment_mode=alignment_mode,
+            random_state=random_state,
+            include_entities=include_entities,
+        )
 
-    def analyze_gliner2(self, data: Dict[str, List[Any]], batch_extractor: Callable[[List[str]], List[Any]], **kwargs) -> "Dict[str, ColumnAnalysis]":
+    def analyze_gliner2(
+        self,
+        data: Dict[str, List[Any]],
+        batch_extractor: Callable[[List[str]], List[Any]],
+        *,
+        n: Optional[int] = None,
+        alignment_mode: str = "strict",
+        random_state: Optional[int] = DEFAULT_RANDOM_STATE,
+        include_entities: bool = False,
+    ) -> Dict[str, ColumnAnalysis]:
         """Analyze with GLiNER2. Unwraps the outer list from each result before mapping."""
         def _extract(texts: List[str]) -> List[Any]:
             return [r[0] if r else {} for r in batch_extractor(texts)]
-        return self.analyze(data, batch_extractor=_extract, entity_mapper=GLINER2_MAPPER, **kwargs)
+        return self.analyze(
+            data,
+            batch_extractor=_extract,
+            n=n,
+            entity_mapper=GLINER2_MAPPER,
+            alignment_mode=alignment_mode,
+            random_state=random_state,
+            include_entities=include_entities,
+        )
 
-    def analyze_openmed(self, data: Dict[str, List[Any]], batch_extractor: Callable[[List[str]], List[Any]], **kwargs) -> "Dict[str, ColumnAnalysis]":
+    def analyze_openmed(
+        self,
+        data: Dict[str, List[Any]],
+        batch_extractor: Callable[[List[str]], List[Any]],
+        *,
+        n: Optional[int] = None,
+        alignment_mode: str = "strict",
+        random_state: Optional[int] = DEFAULT_RANDOM_STATE,
+        include_entities: bool = False,
+    ) -> Dict[str, ColumnAnalysis]:
         """Analyze with OpenMed. Calls ``.to_dict()`` on each PredictionResult before mapping."""
         def _extract(texts: List[str]) -> List[Any]:
             return [r.to_dict() if r else {} for r in batch_extractor(texts)]
-        return self.analyze(data, batch_extractor=_extract, entity_mapper=OPENMED_MAPPER, **kwargs)
+        return self.analyze(
+            data,
+            batch_extractor=_extract,
+            n=n,
+            entity_mapper=OPENMED_MAPPER,
+            alignment_mode=alignment_mode,
+            random_state=random_state,
+            include_entities=include_entities,
+        )
 
-    def _process_doc(self, doc) -> tuple[str, List[EntityResult]]:
-        """Single-pass extraction of cell label and entities."""
-        
-        if not doc.ents:
-            return "NON_PII", []
+    def _process_doc(self, doc) -> tuple[Set[str], List[EntityResult]]:
+        if doc.ents:
+            ents = doc.ents
+        else:
+            raw_spans = doc.spans.get(self.spans_key, [])
+            ents = hierarchical_merge_filter(raw_spans) if raw_spans else []
+        if not ents:
+            return set(), []
 
-        unique_labels: set[str] = set()
+        unique_labels: Set[str] = set()
         entities: List[EntityResult] = []
 
-        for ent in doc.ents:
+        for ent in ents:
             unique_labels.add(ent.label_)
             entities.append(
                 EntityResult(
@@ -141,56 +223,62 @@ class StructuredAnalyzer:
                 )
             )
 
-        cell_label = (
-            "PII" if len(unique_labels) > 1 else next(iter(unique_labels))
+        return unique_labels, entities
+
+    def _classify_column(
+        self,
+        cell_label_sets: List[Set[str]],
+        all_entities: List[EntityResult],
+        include_entities: bool,
+    ) -> ColumnAnalysis:
+        _empty = ColumnAnalysis(
+            label=NON_PII_LABEL,
+            score=0.0,
+            entity_distribution={},
+        )
+        if not cell_label_sets:
+            return _empty
+
+        total_cells = len(cell_label_sets)
+        non_pii_count = sum(1 for s in cell_label_sets if not s)
+
+        if non_pii_count == total_cells:
+            return _empty
+
+        label_cell_counts: Dict[str, int] = defaultdict(int)
+        for label_set in cell_label_sets:
+            for label in label_set:
+                label_cell_counts[label] += 1
+
+        label_score_lists: Dict[str, List[float]] = defaultdict(list)
+        for e in all_entities:
+            label_score_lists[e['label']].append(e['score'])
+
+        def avg_label_score(label: str) -> float:
+            scores = label_score_lists.get(label, [])
+            return sum(scores) / len(scores) if scores else 0.0
+
+        entity_distribution: Dict[str, LabelStats] = {
+            label: LabelStats(
+                coverage=count / total_cells,
+                score=avg_label_score(label),
+            )
+            for label, count in label_cell_counts.items()
+        }
+
+        column_label = max(
+            label_cell_counts,
+            key=lambda l: (label_cell_counts[l] / total_cells) * avg_label_score(l),
+        )
+        score = (label_cell_counts[column_label] / total_cells) * avg_label_score(column_label)
+
+        result = ColumnAnalysis(
+            label=column_label,
+            score=score,
+            entity_distribution=entity_distribution,
         )
 
-        return cell_label, entities
+        if include_entities:
+            result['entities'] = all_entities
 
-    def _classify_column(self, cell_labels: List[str], all_entities: List[EntityResult]) -> ColumnAnalysis:
-        """Most common non-NON_PII label; confidence over all cells."""
-        if not cell_labels:
-            return ColumnAnalysis(
-                label="NON_PII",
-                coverage=0.0,
-                score=0.0,
-                entity_distribution=dict(),
-                entities=[],
-            )
-
-        label_counts = Counter(cell_labels)
-        total_cells = len(cell_labels)
-
-        if label_counts.get("NON_PII", 0) == total_cells:
-            return ColumnAnalysis(
-                label="NON_PII",
-                coverage=1.0,
-                score=1.0,
-                entity_distribution=dict(),
-                entities=[],
-            )
-
-        candidate_counts = label_counts.copy()
-        candidate_counts.pop("NON_PII", None)
-
-        (column_label, winner_count), = candidate_counts.most_common(1)
-        coverage = winner_count / total_cells
-
-        winning_label_scores = [
-            e['score'] for e in all_entities 
-            if e['label'] == column_label
-        ]
-        score = (
-            sum(winning_label_scores) / len(winning_label_scores) 
-            if winning_label_scores else 0.0
-        )
-
-        return ColumnAnalysis(
-                label=column_label,
-                coverage=coverage,
-                score=score,
-                entity_distribution=dict(
-                    Counter(e['label'] for e in all_entities)
-                ),
-                entities=all_entities,
-            )
+        return result
