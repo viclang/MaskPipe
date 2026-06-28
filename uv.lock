@@ -683,12 +683,10 @@ dependencies = [
     { name = "spacy" },
 ]
 
-[package.optional-dependencies]
-presidio = [
+[package.dev-dependencies]
+codegen = [
     { name = "presidio-analyzer" },
 ]
-
-[package.dev-dependencies]
 dev = [
     { name = "marimo" },
     { name = "pytest" },
@@ -697,13 +695,12 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "phonenumbers" },
-    { name = "presidio-analyzer", marker = "extra == 'presidio'", specifier = ">=2.2" },
     { name = "schwifty" },
     { name = "spacy", specifier = ">=3.8.7" },
 ]
-provides-extras = ["presidio"]
 
 [package.metadata.requires-dev]
+codegen = [{ name = "presidio-analyzer", specifier = ">=2.2" }]
 dev = [
     { name = "marimo" },
     { name = "pytest" },
