@@ -7,6 +7,22 @@ Use it when you want one of these workflows:
 - take entities from another NER system, run overlap resolution, then redact them
 - combine both approaches in one spaCy pipeline
 
+## Where maskpipe fits
+
+Maskpipe is a refinement and masking layer. It does not replace your NER model — it makes the output of any NER model production-ready: scoring, context boosting, conflict resolution, validation, and redaction, all in a composable spaCy pipeline.
+
+Bring your own detection source:
+
+| Source | Use case |
+|---|---|
+| GLiNER | Zero-shot multilingual PII detection across 100+ languages; define entity types on the fly without retraining — covers 40+ PII categories including SSN, passport, IBAN, credit card |
+| GLiNER2 | Multi-task PII detection with text classification and structured extraction in one model |
+| HuggingFace NER | Fine-tuned transformer models (BERT, DeBERTa) for high-accuracy PII on standard categories; strongest choice when you have labeled data or need domain-specific models (legal, code, multilingual) |
+| OpenMed | Clinical NER and HIPAA-aware de-identification for healthcare; detects clinical entities (diseases, medications, anatomy) alongside patient PII in 13 languages |
+| Built-in rules | Rule-based detection for 13+ countries without an external model; high-precision validators for country-specific IDs (SSN, passport, national ID, VAT) |
+
+Each source produces character-offset spans with a label and score. `DocBuilder` normalises these into spaCy docs. The maskpipe pipeline then applies context-aware scoring, resolves overlapping spans, validates matches, and writes `doc._.masked`.
+
 ## What MaskPipe Does
 
 MaskPipe gives you four composable pipeline components:
@@ -113,20 +129,38 @@ Why this works:
 
 ## Built-in Entities
 
-Available in `maskpipe.entities`:
-- `CREDIT_CARD`
-- `DATE`
-- `EMAIL`
-- `IBAN`
-- `IPV4`
-- `IPV6`
-- `MAC_ADDRESS`
-- `NUMBER`
-- `PHONE_NUMBER`
-- `URL`
+Generic entities in `maskpipe.entities`:
 
-Available in `maskpipe.entities.nl`:
-- `BSN`
+| Entity | Description |
+|---|---|
+| `CREDIT_CARD` | Credit card numbers (Luhn-validated) |
+| `CRYPTO` | Bitcoin and Ethereum wallet addresses |
+| `DATE` | Date expressions |
+| `EMAIL` | Email addresses |
+| `IBAN` | International bank account numbers |
+| `IPV4` / `IPV6` | IP addresses |
+| `MAC_ADDRESS` | MAC / hardware addresses |
+| `NUMBER` | Generic numeric values |
+| `PHONE_NUMBER` | Phone numbers (international) |
+| `URL` | Web URLs |
+
+Country-specific entities:
+
+| Package | Entities |
+|---|---|
+| `maskpipe.entities.australia` | `AU_ABN`, `AU_ACN`, `AU_MEDICARE`, `AU_TFN` |
+| `maskpipe.entities.finland` | `FI_PERSONAL_IDENTITY_CODE` |
+| `maskpipe.entities.india` | `IN_AADHAAR`, `IN_GSTIN`, `IN_PAN`, `IN_PASSPORT`, `IN_VEHICLE_REGISTRATION`, `IN_VOTER` |
+| `maskpipe.entities.italy` | `IT_DRIVER_LICENSE`, `IT_FISCAL_CODE`, `IT_IDENTITY_CARD`, `IT_PASSPORT`, `IT_VAT_CODE` |
+| `maskpipe.entities.korea` | `KR_BRN`, `KR_DRIVER_LICENSE`, `KR_FRN`, `KR_PASSPORT`, `KR_RRN` |
+| `maskpipe.entities.nigeria` | `NG_NIN`, `NG_VEHICLE_REGISTRATION` |
+| `maskpipe.entities.nl` | `NL_BSN` |
+| `maskpipe.entities.poland` | `PL_PESEL` |
+| `maskpipe.entities.singapore` | `SG_FIN`, `SG_UEN` |
+| `maskpipe.entities.spain` | `ES_NIE`, `ES_NIF` |
+| `maskpipe.entities.thai` | `TH_TNIN` |
+| `maskpipe.entities.uk` | `UK_NHS`, `UK_NINO`, `UK_PASSPORT`, `UK_POSTCODE`, `UK_VEHICLE_REGISTRATION` |
+| `maskpipe.entities.us` | `ABA_ROUTING`, `BANK_ACCOUNT`, `MEDICAL_LICENSE`, `US_DRIVER_LICENSE`, `US_ITIN`, `US_MBI`, `US_NPI`, `US_PASSPORT`, `US_SSN` |
 
 Entity objects are immutable configs. Use `.replace(...)` to override one field without rebuilding the whole entity:
 
@@ -206,7 +240,7 @@ Use `entity_mapper` to normalize different NER output formats. MaskPipe provides
 | `GLINER_MAPPER` | GLiNER (x-large) | `start`, `end`, `label`, `score` |
 | `GLINER2_MAPPER` | GLiNER2 (nested format) | nested `{label: {start, end, confidence}}` |
 | `HF_NER_MAPPER` | HuggingFace NER | `entity_group` (or `entity`), `start`, `end`, `score` |
-| `OPENMED_MAPPER` | OpenMed (biomedical) | `start`, `end`, `label`, `confidence` |
+| `OPENMED_MAPPER` | OpenMed (clinical NER / HIPAA) | `start`, `end`, `label`, `confidence` |
 
 Example with GLiNER:
 
@@ -382,6 +416,13 @@ Entity(
 ```bash
 uv sync --dev
 uv run pytest -q
+```
+
+To regenerate entity files from Presidio recognizers:
+
+```bash
+uv sync --group codegen
+python scripts/gen_entity.py --update-all
 ```
 
 ## License
