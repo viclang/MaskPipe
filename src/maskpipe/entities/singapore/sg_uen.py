@@ -29,10 +29,10 @@ def _validate_uen_format_a(uen: str) -> bool:
 
 def _validate_uen_format_c(uen: str) -> bool:
     check_digit = uen[-1]
-    if uen[0] not in {'R', 'T', 'S'}:
+    if uen[0] not in {'R', 'S', 'T'}:
         return False
     entity_type = uen[3:5]
-    if entity_type not in {'CD', 'CX', 'CP', 'HC', 'TU', 'HS', 'LL', 'PB', 'MC', 'FN', 'RP', 'XL', 'RF', 'MB', 'CM', 'FC', 'CS', 'GB', 'NB', 'MQ', 'FM', 'SS', 'FB', 'VH', 'GS', 'MM', 'CC', 'CL', 'MH', 'CH', 'TC', 'NR', 'MD', 'PA', 'GA', 'PF', 'SM', 'LP', 'DP'}:
+    if entity_type not in {'CC', 'CD', 'CH', 'CL', 'CM', 'CP', 'CS', 'CX', 'DP', 'FB', 'FC', 'FM', 'FN', 'GA', 'GB', 'GS', 'HC', 'HS', 'LL', 'LP', 'MB', 'MC', 'MD', 'MH', 'MM', 'MQ', 'NB', 'NR', 'PA', 'PB', 'PF', 'RF', 'RP', 'SM', 'SS', 'TC', 'TU', 'VH', 'XL'}:
         return False
     weighted_sum = sum(('ABCDEFGHJKLMNPQRSTUVWX0123456789'.index(n) * w for n, w in zip(uen[:-1], (4, 3, 5, 3, 10, 2, 2, 5, 7))))
     checksum = 'ABCDEFGHJKLMNPQRSTUVWX0123456789'[(weighted_sum - 5) % 11]

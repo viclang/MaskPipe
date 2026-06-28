@@ -5,10 +5,13 @@ from .kr_frn import KR_FRN
 from .kr_passport import KR_PASSPORT
 from .kr_rrn import KR_RRN
 
+KR = [KR_BRN, KR_DRIVER_LICENSE, KR_FRN, KR_PASSPORT, KR_RRN]
+
 __all__ = [
     "KR_BRN",
     "KR_DRIVER_LICENSE",
     "KR_FRN",
     "KR_PASSPORT",
     "KR_RRN",
+    "KR",
 ]

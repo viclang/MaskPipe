@@ -5,10 +5,13 @@ from .it_identity_card import IT_IDENTITY_CARD
 from .it_passport import IT_PASSPORT
 from .it_vat_code import IT_VAT_CODE
 
+IT = [IT_DRIVER_LICENSE, IT_FISCAL_CODE, IT_IDENTITY_CARD, IT_PASSPORT, IT_VAT_CODE]
+
 __all__ = [
     "IT_DRIVER_LICENSE",
     "IT_FISCAL_CODE",
     "IT_IDENTITY_CARD",
     "IT_PASSPORT",
     "IT_VAT_CODE",
+    "IT",
 ]

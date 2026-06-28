@@ -2,7 +2,10 @@
 from .ng_nin import NG_NIN
 from .ng_vehicle_registration import NG_VEHICLE_REGISTRATION
 
+NG = [NG_NIN, NG_VEHICLE_REGISTRATION]
+
 __all__ = [
     "NG_NIN",
     "NG_VEHICLE_REGISTRATION",
+    "NG",
 ]

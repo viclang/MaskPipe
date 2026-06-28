@@ -38,7 +38,7 @@ def _validator(span: Span) -> bool:
     if not sanitized_value.isdigit():
         return False
     region_code = sanitized_value[:2]
-    if region_code not in {'26', '20', '15', '19', '16', '13', '22', '11', '21', '24', '28', '14', '18', '25', '23', '17', '12'}:
+    if region_code not in {'11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '28'}:
         return False
     return True
 # END GENERATED: validator

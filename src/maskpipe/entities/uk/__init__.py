@@ -5,10 +5,13 @@ from .uk_passport import UK_PASSPORT
 from .uk_postcode import UK_POSTCODE
 from .uk_vehicle_registration import UK_VEHICLE_REGISTRATION
 
+UK = [UK_NHS, UK_NINO, UK_PASSPORT, UK_POSTCODE, UK_VEHICLE_REGISTRATION]
+
 __all__ = [
     "UK_NHS",
     "UK_NINO",
     "UK_PASSPORT",
     "UK_POSTCODE",
     "UK_VEHICLE_REGISTRATION",
+    "UK",
 ]

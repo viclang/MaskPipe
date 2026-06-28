@@ -2,7 +2,10 @@
 from .es_nie import ES_NIE
 from .es_nif import ES_NIF
 
+ES = [ES_NIE, ES_NIF]
+
 __all__ = [
     "ES_NIE",
     "ES_NIF",
+    "ES",
 ]

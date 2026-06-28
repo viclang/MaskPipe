@@ -23,6 +23,8 @@ from .number import NUMBER
 from .phone import PHONE_NUMBER
 from .url import URL
 
+GENERIC = [CREDIT_CARD, CRYPTO, DATE, EMAIL, IBAN, IPV4, IPV6, MAC_ADDRESS, NUMBER, PHONE_NUMBER, URL]
+
 __all__ = [
     "Entity",
     "CREDIT_CARD",
@@ -36,6 +38,7 @@ __all__ = [
     "NUMBER",
     "PHONE_NUMBER",
     "URL",
+    "GENERIC",
     "australia",
     "finland",
     "india",

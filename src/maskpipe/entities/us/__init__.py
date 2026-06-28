@@ -10,6 +10,8 @@ from .us_npi import US_NPI
 from .us_passport import US_PASSPORT
 from .us_ssn import US_SSN
 
+US = [ABA_ROUTING_NUMBER, US_BANK_ACCOUNT, MEDICAL_LICENSE, US_BANK_NUMBER, US_DRIVER_LICENSE, US_ITIN, US_MBI, US_NPI, US_PASSPORT, US_SSN]
+
 __all__ = [
     "ABA_ROUTING_NUMBER",
     "US_BANK_ACCOUNT",
@@ -21,4 +23,5 @@ __all__ = [
     "US_NPI",
     "US_PASSPORT",
     "US_SSN",
+    "US",
 ]

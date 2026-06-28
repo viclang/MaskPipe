@@ -2,7 +2,10 @@
 from .sg_fin import SG_NRIC_FIN
 from .sg_uen import SG_UEN
 
+SG = [SG_NRIC_FIN, SG_UEN]
+
 __all__ = [
     "SG_NRIC_FIN",
     "SG_UEN",
+    "SG",
 ]

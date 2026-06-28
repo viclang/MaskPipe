@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
-from maskpipe.presidio import PresidioConverter
+from presidio_converter import PresidioConverter
 from presidio_analyzer import EntityRecognizer, PatternRecognizer
 
 from extractor import extract_custom_matcher, extract_validator

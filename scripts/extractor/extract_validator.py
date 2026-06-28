@@ -8,7 +8,7 @@ import logging
 from presidio_analyzer import PatternRecognizer
 from .ast_utils import deduplicate
 from .extraction import extract_instance_method
-from .source_cleanup import fix_blank_lines, fold_helpers_into_validator, has_super_calls, normalize_bool_tristate, remove_unused_imports, replace_util_functions
+from .source_cleanup import fix_blank_lines, fold_helpers_into_validator, has_super_calls, normalize_bool_tristate, remove_unused_imports, replace_util_functions, sort_set_literals
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +70,7 @@ def extract_validator(recognizer) -> tuple[str, list[str]] | None:
         logger.warning("extract_validator: skipping %s — extracted code contains unresolvable super() call", type(recognizer).__name__)
         return None
     src, util_imports = replace_util_functions(src)
+    src = sort_set_literals(src)
     return src, remove_unused_imports(src, deduplicate(all_imports + util_imports))
 
 def _inject_invalidate_check(src: str) -> str:

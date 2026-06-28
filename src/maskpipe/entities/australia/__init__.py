@@ -4,9 +4,12 @@ from .au_acn import AU_ACN
 from .au_medicare import AU_MEDICARE
 from .au_tfn import AU_TFN
 
+AU = [AU_ABN, AU_ACN, AU_MEDICARE, AU_TFN]
+
 __all__ = [
     "AU_ABN",
     "AU_ACN",
     "AU_MEDICARE",
     "AU_TFN",
+    "AU",
 ]

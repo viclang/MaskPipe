@@ -6,6 +6,8 @@ from .in_passport import IN_PASSPORT
 from .in_vehicle_registration import IN_VEHICLE_REGISTRATION
 from .in_voter import IN_VOTER
 
+IN = [IN_AADHAAR, IN_GSTIN, IN_PAN, IN_PASSPORT, IN_VEHICLE_REGISTRATION, IN_VOTER]
+
 __all__ = [
     "IN_AADHAAR",
     "IN_GSTIN",
@@ -13,4 +15,5 @@ __all__ = [
     "IN_PASSPORT",
     "IN_VEHICLE_REGISTRATION",
     "IN_VOTER",
+    "IN",
 ]
