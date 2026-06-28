@@ -62,3 +62,19 @@ _Avoid_: DocFactory, DocAnnotator
 **EntityMapper**:
 An adapter that converts raw output from an external NLP model into `EntityResult` objects so they can be loaded into a spaCy `Doc` by `DocBuilder`.
 _Provisional_: may be renamed as external model integrations expand
+
+### Structured Analysis
+
+**StructuredAnalyzer**:
+The component that classifies columns in tabular data. For each column it samples cell values, runs them through the spaCy pipeline via `DocBuilder`, and returns a `ColumnAnalysis` per column. The column name is passed as a context word to `DocBuilder` so that `ContextEnhancer` can boost entity scores when the column name appears near a detected span — e.g. a column named `"geboortedatum"` boosts birth-date entity confidence. Does not mutate input data.
+_Avoid_: ColumnClassifier, TableAnalyzer
+
+**ColumnAnalysis**:
+The result of classifying one column. Carries a `label` (the dominant entity type or `NON_PII`), a `score` (`coverage × average entity confidence` for the winning label — the same metric used to select it), an `entity_distribution` (per-label `LabelStats`), and an optional `entities` list when `include_entities=True`. See ADR-0007.
+
+**LabelStats**:
+Per-label summary within `entity_distribution`. Carries `coverage` (fraction of sampled cells containing that label) and `score` (average detection confidence). Mirrors the top-level `ColumnAnalysis` fields for easy comparison.
+
+**coverage** *(on `ColumnAnalysis` and `LabelStats`)*:
+Fraction of sampled cells that contain at least one entity of the relevant label. A cell contributes to a label's coverage even if it also contains entities of other labels. For `NON_PII` columns, coverage is `0.0`. See ADR-0008.
+_Avoid_: frequency, prevalence

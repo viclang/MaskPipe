@@ -51,17 +51,17 @@ def test_add_pattern_with_id():
 
     assert doc.spans['sc'][0].id_ == "anna"
 
-def test_annotate_ents():
+def test_recognizer_writes_to_spans_conflict_resolver_promotes_to_ents():
     nlp = Dutch()
     pattern = "Anna de Vries"
     label = "persoon"
-    recognizer = nlp.add_pipe("recognizer", config={ "annotate_ents": True })
-    recognizer.add_patterns([
-        { "label": "persoon", "pattern": pattern },
-    ])
+    recognizer = nlp.add_pipe("recognizer")
+    nlp.add_pipe("conflict_resolver")
+    recognizer.add_patterns([{"label": label, "pattern": pattern}])
 
     doc = nlp("Mijn naam is Anna de Vries.")
 
+    assert len(doc.spans["sc"]) == 1
     assert len(doc.ents) == 1
     assert doc.ents[0].label_ == label
     assert doc.ents[0].text == pattern

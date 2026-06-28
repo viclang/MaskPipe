@@ -226,18 +226,18 @@ def test_multiple_entities_same_label():
     assert len(result.ents) == 2
 
 
-def test_style_ent_vs_span():
-    """Test with ent style retrieves from doc.ents."""
+def test_reads_and_writes_spans_key():
+    """ContextEnhancer always reads and writes doc.spans[spans_key], never doc.ents."""
     nlp = Dutch()
     doc = nlp("Email contact")
-    doc.ents = [span(doc, 0, 2, "email", score=0.5)]
-    
-    context_enhancer = nlp.add_pipe("context_enhancer", config={"style": "ent"})
-    
+    doc.spans["sc"] = [span(doc, 0, 2, "email", score=0.5)]
+
+    context_enhancer = nlp.add_pipe("context_enhancer")
+
     result = context_enhancer(doc)
-    
-    # Should retrieve from doc.ents with ent style
-    assert len(result.ents) == 1
+
+    assert len(result.spans["sc"]) == 1
+    assert len(result.ents) == 0
 
 
 def test_add_patterns_extends_list():
@@ -262,7 +262,6 @@ def test_default_initialization():
     
     assert context_enhancer.name == "context_enhancer"
     assert context_enhancer.spans_key == "sc"
-    assert context_enhancer.style == "span"
     assert context_enhancer.default_score == 0.35
     assert context_enhancer.min_enhanced_score == 0.4
     assert context_enhancer.context_before == 5

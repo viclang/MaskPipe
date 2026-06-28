@@ -8,6 +8,7 @@ from typing import (
 
 from spacy.language import Language
 from spacy.tokens import Doc, Span
+from .constants import SPANS_KEY
 from .entity_mapper import (
     BaseEntityMapper,
     EntityResult,
@@ -17,8 +18,6 @@ from .entity_mapper import (
     OPENMED_MAPPER,
 )
 
-DOC_BUILDER_DEFAULT_SPANS_KEY = "sc"
-
 class DocBuilder:
     """Utility for building spacy docs with entities for anonymacy pipelines."""
     def __init__(
@@ -27,14 +26,12 @@ class DocBuilder:
         text: str,
         *,
         label_mapping: Optional[Dict[str, str]] = None,
-        spans_key: Optional[str] = DOC_BUILDER_DEFAULT_SPANS_KEY,
-        annotate_ents: bool = False,
+        spans_key: str = SPANS_KEY,
         default_score: float = 0.5,
     ):
         self.nlp = nlp
         self.doc = self.nlp._ensure_doc(text)
         self.spans_key = spans_key
-        self.annotate_ents = annotate_ents
         self.label_mapping = label_mapping if label_mapping else {}
         self.default_score = default_score
 
@@ -159,17 +156,10 @@ class DocBuilder:
 
     def _apply_spans(self, spans: List[Span]) -> "DocBuilder":
         """Private helper: apply spans to doc."""
-        if spans:
-            if self.spans_key:
-                all_spans = list(self.doc.spans.get(self.spans_key, []))
-                all_spans.extend(spans)
-                self.doc.spans[self.spans_key] = all_spans
-            
-            if self.annotate_ents:
-                all_ents = list(self.doc.ents)
-                all_ents.extend(spans)
-                self.doc.ents = tuple(all_ents)
-        
+        if spans and self.spans_key:
+            all_spans = list(self.doc.spans.get(self.spans_key, []))
+            all_spans.extend(spans)
+            self.doc.spans[self.spans_key] = all_spans
         return self
 
     def build(self) -> Doc:

@@ -25,7 +25,8 @@ from spacy.pipeline import Pipe
 from spacy.tokens import Doc, Span
 from spacy.util import SimpleFrozenList, ensure_path
 
-from .span_filter import DEFAULT_HIERARCHY, hierarchical_merge_filter
+from .constants import SPANS_KEY
+from .span_filter import hierarchical_merge_filter
 from .util import read_pickle, write_pickle
 
 logger = logging.getLogger("maskpipe.recognizer")
@@ -40,24 +41,17 @@ CustomMatcherFunc = Callable[[Doc], List[Span]]
 
 SpansFilterFunc = Callable[[Iterable[Span], Iterable[Span]], Iterable[Span]]
 
-RECOGNIZER_DEFAULT_SPANS_KEY = "sc"
-
 # Compatibility function for registry
 def anonymacy_levenshtein_compare(s1: str, s2: str, max_dist: int) -> bool:
     return  levenshtein_compare(s1, s2, max_dist)
-    
+
 @registry.misc("spacy.levenshtein_compare.v1")
 def make_levenshtein_compare():
     return anonymacy_levenshtein_compare
 
 DEFAULT_RECOGNIZER_CONFIG = {
-    "spans_key": RECOGNIZER_DEFAULT_SPANS_KEY,
+    "spans_key": SPANS_KEY,
     "spans_filter": None,
-    "annotate_ents": False,
-    "ents_filter": {
-        "@misc": "maskpipe.hierarchical_merge_filter.v1",
-        "hierarchy": DEFAULT_HIERARCHY
-    },
     "phrase_matcher_attr": None,
     "matcher_fuzzy_compare": {"@misc": "spacy.levenshtein_compare.v1"},
     "default_score": 0.6,
@@ -72,10 +66,8 @@ class Recognizer(Pipe):
         self,
         nlp: Language,
         name: str = "recognizer",
-        spans_key: Optional[str] = RECOGNIZER_DEFAULT_SPANS_KEY,
+        spans_key: str = SPANS_KEY,
         spans_filter: Optional[SpansFilterFunc] = None,
-        annotate_ents: bool = False,
-        ents_filter: SpansFilterFunc = hierarchical_merge_filter,
         phrase_matcher_attr: Optional[Union[int, str]] = None,
         matcher_fuzzy_compare: Callable = anonymacy_levenshtein_compare,
         default_score: float = 0.6,
@@ -86,9 +78,7 @@ class Recognizer(Pipe):
         self.name = name
         self.spans_key = spans_key
         self.spans_filter = spans_filter
-        self.ents_filter = ents_filter
         self.default_score = min(default_score, 1.0)
-        self.annotate_ents = annotate_ents
         self.phrase_matcher_attr = phrase_matcher_attr
         self.matcher_fuzzy_compare = matcher_fuzzy_compare
         self._match_label_id_map: Dict[int, Dict[str, Any]] = {}
@@ -203,24 +193,13 @@ class Recognizer(Pipe):
 
     def set_annotations(self, doc, matches):
         """Modify the document in place"""
-        if self.spans_key:
-            spans = []
-            if self.spans_key in doc.spans and not self.overwrite:
-                spans = doc.spans[self.spans_key]
-            spans.extend(
-                self.spans_filter(spans, matches) if self.spans_filter else matches
-            )
-
-            doc.spans[self.spans_key] = spans
-        
-        # set doc.ents if annotate_ents is set
-        if self.annotate_ents:
-            spans = []
-            if not self.overwrite:
-                spans = list(doc.ents)
-            spans = self.ents_filter(spans, matches)
-
-            doc.ents = sorted(spans)
+        spans = []
+        if self.spans_key in doc.spans and not self.overwrite:
+            spans = doc.spans[self.spans_key]
+        spans.extend(
+            self.spans_filter(spans, matches) if self.spans_filter else matches
+        )
+        doc.spans[self.spans_key] = spans
 
     def add_patterns(self, patterns: List[Pattern]) -> None:
         """Add patterns to the matcher."""

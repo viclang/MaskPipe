@@ -99,7 +99,7 @@ def test_overlapping_spans_only_longest_kept():
     span1 = ent(doc, 0, 1, "BSN", score=0.9)
     span2 = ent(doc, 0, 1, "BSN", score=0.8)
     doc.spans["sc"] = [span1, span2]
-    anonymizer = Anonymizer(nlp, style="span", spans_key="sc")
+    anonymizer = Anonymizer(nlp, spans_key="sc")
     anonymizer.add_redactors({"BSN": "[B]"})
     
     doc = anonymizer(doc)

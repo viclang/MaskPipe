@@ -15,6 +15,7 @@ from spacy.pipeline import Pipe
 from spacy.tokens import Doc, Span
 from spacy.util import SimpleFrozenList, ensure_path
 
+from .constants import SPANS_KEY
 from .span_filter import DEFAULT_HIERARCHY, hierarchical_merge_filter
 from .util import read_pickle, write_pickle
 
@@ -23,12 +24,11 @@ TextReplacement = Callable[[str], str]
 SpansFilterFunc = Callable[[Iterable[Span]], Iterable[Span]]
 
 DEFAULT_ANONYMIZER_CONFIG = {
-    "spans_key": "sc",
+    "spans_key": SPANS_KEY,
     "spans_filter": {
         "@misc": "maskpipe.hierarchical_merge_filter.v1",
         "hierarchy": DEFAULT_HIERARCHY
     },
-    "style": "ent",
 }
 
 @Language.factory("anonymizer", assigns=["doc.ents"], default_config=DEFAULT_ANONYMIZER_CONFIG)
@@ -45,15 +45,13 @@ class Anonymizer(Pipe):
         self,
         nlp: Language,
         name: str = "anonymizer",
-        spans_key: str = "sc",
+        spans_key: str = SPANS_KEY,
         spans_filter: SpansFilterFunc = hierarchical_merge_filter,
-        style: str = "ent",
     ):
         self.nlp = nlp
         self.name = name
         self.spans_key = spans_key
         self.spans_filter = spans_filter
-        self.style = style
         self.clear()
 
     def __call__(self, doc: Doc) -> Doc:
@@ -100,10 +98,10 @@ class Anonymizer(Pipe):
         self._redactors: Dict[str, TextReplacement] = {}
 
     def _get_spans(self, doc: Doc) -> Iterable[Span]:
-        if self.style == "ent":
+        if doc.ents:
             return list(doc.ents)
         spans = list(doc.spans.get(self.spans_key, []))
-        return self.spans_filter(spans)
+        return self.spans_filter(spans) if spans else []
 
     @staticmethod
     def _normalize_redactor(redactor: Union[str, NoArgReplacement, TextReplacement]) -> TextReplacement:

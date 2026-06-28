@@ -9,6 +9,7 @@ from typing import (
 from spacy.language import Language
 
 from .anonymizer import Anonymizer
+from .constants import SPANS_KEY
 from .context_enhancer import ContextEnhancer
 from .entities.entity import Entity
 from .recognizer import Recognizer
@@ -57,11 +58,13 @@ class PipelineBuilder:
             nlp: Language,
             *,
             label_mapping: Optional[Dict[str, str]] = None,
-            disable: Optional[List[str]] = None
+            disable: Optional[List[str]] = None,
+            spans_key: str = SPANS_KEY,
         ):
         self.components = ["recognizer", "context_enhancer", "conflict_resolver", "anonymizer"]
         self.nlp = nlp
         self.label_mapping = label_mapping if label_mapping else {}
+        self.spans_key = spans_key
         disabled = set(disable) if disable else set()
         self.components = [c for c in self.components if c not in disabled]
 
@@ -71,7 +74,7 @@ class PipelineBuilder:
 
         for component in self.components:
             if not nlp.has_pipe(component):
-                nlp.add_pipe(component)
+                nlp.add_pipe(component, config={"spans_key": spans_key})
         
     def add_entities(self, entities: List[Entity]):
         """Partition entities and add their patterns, matchers, and redactors to relevant components."""

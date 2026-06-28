@@ -16,6 +16,8 @@ from spacy.matcher import Matcher
 from spacy.pipeline import Pipe
 from spacy.tokens import Doc, Span
 
+from .constants import SPANS_KEY
+
 class ContextPattern(TypedDict):
     label: Required[str]
     pattern: Required[Union[str, List[Dict[str, Any]]]]
@@ -30,34 +32,18 @@ class ContextEnhancer(Pipe):
         self,
         nlp: Language,
         name: str = "context_enhancer",
-        spans_key: str = "sc",
-        style: str = "span",
+        spans_key: str = SPANS_KEY,
         default_score: float = 0.35,
         min_enhanced_score: float = 0.4,
         context_window: Tuple[int, int] = (5, 3),
         allow_dependency_link: bool = True,
     ):
-        """Initialize ContextEnhancer.
-        
-        Args:
-            nlp: The spaCy Language object
-            name: Name of the component
-            patterns: List of context patterns for enhancement/invalidation
-            added_context_words: Additional context words to append to doc
-            default_score: Score increase for enhanced spans
-            min_enhanced_score: Minimum score after enhancement
-            context_window: (before, after) token window for context matching
-            allow_dependency_link: If True, allows dependency-based context matching
-            style: "ent" or "span" for where to store results
-            spans_key: Key for doc.spans if style="span"
-        """
         self.nlp = nlp
         self.name = name
         self.default_score = default_score
         self.min_enhanced_score = min_enhanced_score
         self.context_before, self.context_after = context_window
         self.allow_dependency_link = allow_dependency_link
-        self.style = style
         self.spans_key = spans_key
 
         # Store our own patterns
@@ -136,7 +122,7 @@ class ContextEnhancer(Pipe):
                 processed_spans.append(span)
         
         # Update spans
-        self._set_spans(doc, processed_spans)
+        doc.spans[self.spans_key] = processed_spans
         return doc
 
     def add_patterns(self, patterns: List[ContextPattern]) -> None:
@@ -144,18 +130,7 @@ class ContextEnhancer(Pipe):
         self._patterns.extend(patterns)
 
     def _get_spans(self, doc: Doc) -> List[Span]:
-        """Get current spans."""
-        return (
-            list(doc.ents) if self.style == "ent" 
-            else list(doc.spans.get(self.spans_key, []))
-        )
-    
-    def _set_spans(self, doc: Doc, spans: List[Span]) -> None:
-        """Set spans on document."""
-        if self.style == "ent":
-            doc.ents = spans
-        else:
-            doc.spans[self.spans_key] = spans
+        return list(doc.spans.get(self.spans_key, []))
 
     def _has_dependency_link(self, span: Span, match_tokens: Span) -> bool:
         """Check if span and match_tokens are directly related via dependency (head or child)."""
