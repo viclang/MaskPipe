@@ -1,8 +1,6 @@
 from typing import List, Tuple
-
 from phonenumbers import PhoneNumberMatcher as Matcher
 from spacy.tokens import Doc
-
 from .entity import Entity
 
 class PhoneNumberMatcher():

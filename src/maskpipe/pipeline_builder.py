@@ -13,6 +13,42 @@ from .context_enhancer import ContextEnhancer
 from .entities.entity import Entity
 from .recognizer import Recognizer
 
+def partition_entities(
+    entities: List[Entity],
+    components: List[str],
+    label_mapping: Dict[str, str],
+) -> Dict[str, Dict[str, Any]]:
+    batch: Dict[str, Dict[str, Any]] = {
+        "recognizer": {"patterns": [], "custom_matchers": {}, "validators": {}},
+        "context_enhancer": {"patterns": []},
+        "anonymizer": {"redactors": {}},
+    }
+    for entity in entities:
+        label = label_mapping.get(entity.label, entity.label)
+
+        if "recognizer" in components:
+            if entity.patterns:
+                batch["recognizer"]["patterns"].extend(
+                    {**pattern, "label": label} for pattern in entity.patterns
+                )
+            if entity.custom_matcher:
+                batch["recognizer"]["custom_matchers"][label] = entity.custom_matcher
+            if entity.validator:
+                batch["recognizer"]["validators"][label] = entity.validator
+
+        if "context_enhancer" in components:
+            if entity.context_patterns:
+                batch["context_enhancer"]["patterns"].extend(
+                    {**pattern, "label": label} for pattern in entity.context_patterns
+                )
+
+        if "anonymizer" in components:
+            if entity.redactor:
+                batch["anonymizer"]["redactors"][label] = entity.redactor
+
+    return batch
+
+
 class PipelineBuilder:
     """Minimal API every language builder must honour."""
     
@@ -39,9 +75,9 @@ class PipelineBuilder:
         
     def add_entities(self, entities: List[Entity]):
         """Partition entities and add their patterns, matchers, and redactors to relevant components."""
-        
-        batch = self._partition_entities_for_components(entities)
-        
+
+        batch = partition_entities(entities, self.components, self.label_mapping)
+
         if "recognizer" in self.components:
             recognizer = cast(Recognizer, self.nlp.get_pipe("recognizer"))
             recognizer.add_patterns(batch["recognizer"]["patterns"])
@@ -55,51 +91,6 @@ class PipelineBuilder:
         if "anonymizer" in self.components:
             anonymizer = cast(Anonymizer, self.nlp.get_pipe("anonymizer"))
             anonymizer.add_redactors(batch["anonymizer"]["redactors"])
-
-    def _partition_entities_for_components(self, entities: List[Entity]) -> Dict[str, Dict[str, Any]]:
-        batch = {
-            "recognizer": {
-                "patterns": [],
-                "custom_matchers": {},
-                "validators": {}
-            },
-            "context_enhancer": {
-                "patterns": []
-            },
-            "anonymizer": {
-                "redactors": {}
-            }
-        }
-        for entity in entities:
-            label = self.label_mapping.get(entity.label, entity.label)
-        
-            if "recognizer" in self.components:
-                if entity.patterns:
-                    patterns_with_label = [
-                        {**pattern, "label": label}
-                        for pattern in entity.patterns
-                    ]
-                    batch["recognizer"]["patterns"].extend(patterns_with_label)
-                
-                if entity.custom_matcher:
-                    batch["recognizer"]["custom_matchers"][label] = entity.custom_matcher
-            
-                if entity.validator:
-                    batch["recognizer"]["validators"][label] = entity.validator
-        
-            if "context_enhancer" in self.components:                
-                if entity.context_patterns:
-                    context_patterns_with_label = [
-                        {**pattern, "label": label}
-                        for pattern in entity.context_patterns
-                    ]
-                    batch["context_enhancer"]["patterns"].extend(context_patterns_with_label)
-            
-            if "anonymizer" in self.components:
-                if entity.redactor:
-                    batch["anonymizer"]["redactors"][label] = entity.redactor    
-            
-        return batch
 
     def build(self) -> Language:
         """Return the configured Language object.

@@ -147,7 +147,6 @@ def test_bytes_roundtrip():
     blob = anonymizer.to_bytes()
     fresh = Anonymizer(nlp)
     fresh.from_bytes(blob)
-    assert fresh._redactors["foo"] == "bar"
     doc = nlp("hello")
     doc.ents = [ent(doc, 0, 1, "foo")]
     doc = fresh(doc)

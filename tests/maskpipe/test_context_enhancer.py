@@ -159,13 +159,13 @@ def test_multiple_patterns_different_labels():
     assert len(result.ents) == 2
 
 
-def test_confidence_boost_capped_at_one():
+def test_default_score_capped_at_one():
     """Test that boosted score doesn't exceed 1.0."""
     nlp = Dutch()
     doc = nlp("Email contact@example.com is geldig")
     doc.ents = [span(doc, 1, 3, "email", score=0.8)]
     
-    context_enhancer = nlp.add_pipe("context_enhancer", config={"confidence_boost": 0.5})
+    context_enhancer = nlp.add_pipe("context_enhancer", config={"default_score": 0.5})
     context_enhancer.add_patterns([
         {"label": "email", "pattern": [{"LOWER": "geldig"}]}
     ])
@@ -263,7 +263,7 @@ def test_default_initialization():
     assert context_enhancer.name == "context_enhancer"
     assert context_enhancer.spans_key == "sc"
     assert context_enhancer.style == "span"
-    assert context_enhancer.confidence_boost == 0.35
+    assert context_enhancer.default_score == 0.35
     assert context_enhancer.min_enhanced_score == 0.4
     assert context_enhancer.context_before == 5
     assert context_enhancer.context_after == 3
