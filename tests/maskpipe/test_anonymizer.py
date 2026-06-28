@@ -54,7 +54,8 @@ def test_one_arg_callable():
     nlp = Dutch()
     doc = nlp("Naam Clara")
     doc.ents = [ent(doc, 1, 2, "persoon")]
-    reverse = lambda txt: txt[::-1]
+    def reverse(txt):
+        return txt[::-1]
     anonymizer = Anonymizer(nlp)
     anonymizer.add_redactors({"persoon": reverse})
     
