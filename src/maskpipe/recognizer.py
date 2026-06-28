@@ -26,7 +26,6 @@ from spacy.tokens import Doc, Span
 from spacy.util import SimpleFrozenList, ensure_path
 
 from .constants import SPANS_KEY
-from .span_filter import hierarchical_merge_filter
 from .util import read_pickle, write_pickle
 
 logger = logging.getLogger("maskpipe.recognizer")

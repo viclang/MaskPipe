@@ -1,5 +1,5 @@
 import random
-from collections import Counter, defaultdict
+from collections import defaultdict
 from collections.abc import Iterable
 from typing import (
     Any,
@@ -28,11 +28,9 @@ from .span_filter import hierarchical_merge_filter
 NON_PII_LABEL = "NON_PII"
 DEFAULT_RANDOM_STATE = 123
 
-
 class LabelStats(TypedDict):
     coverage: float
     score: float
-
 
 class ColumnAnalysis(TypedDict):
     label: str
@@ -41,7 +39,6 @@ class ColumnAnalysis(TypedDict):
     entities: NotRequired[List[EntityResult]]
 
 SpansFilterFunc = Callable[[Iterable[Span]], Iterable[Span]]
-
 
 class StructuredAnalyzer:
 
