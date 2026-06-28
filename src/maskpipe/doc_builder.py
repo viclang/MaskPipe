@@ -10,7 +10,11 @@ from spacy.language import Language
 from spacy.tokens import Doc, Span
 from .entity_mapper import (
     BaseEntityMapper,
-    EntityResult
+    EntityResult,
+    GLINER_MAPPER,
+    GLINER2_MAPPER,
+    HF_NER_MAPPER,
+    OPENMED_MAPPER,
 )
 
 DOC_BUILDER_DEFAULT_SPANS_KEY = "sc"
@@ -78,6 +82,43 @@ class DocBuilder:
                 )
 
             yield builder.build()
+
+    @classmethod
+    def build_batch_gliner(cls, nlp: Language, texts: List[str], entities_list: List[Any], **kwargs) -> Iterator[Doc]:
+        """Build batch of docs from GLiNER ``predict_entities()`` output."""
+        return cls.build_batch(nlp, texts, entities_list=entities_list, entity_mapper=GLINER_MAPPER, **kwargs)
+
+    @classmethod
+    def build_batch_transformers(cls, nlp: Language, texts: List[str], entities_list: List[Any], **kwargs) -> Iterator[Doc]:
+        """Build batch of docs from HuggingFace NER pipeline output."""
+        return cls.build_batch(nlp, texts, entities_list=entities_list, entity_mapper=HF_NER_MAPPER, **kwargs)
+
+    @classmethod
+    def build_batch_gliner2(cls, nlp: Language, texts: List[str], entities_list: List[Any], **kwargs) -> Iterator[Doc]:
+        """Build batch of docs from GLiNER2 ``extract_entities()`` output."""
+        return cls.build_batch(nlp, texts, entities_list=entities_list, entity_mapper=GLINER2_MAPPER, **kwargs)
+
+    @classmethod
+    def build_batch_openmed(cls, nlp: Language, texts: List[str], entities_list: List[Any], **kwargs) -> Iterator[Doc]:
+        """Build batch of docs from OpenMed PredictionResult output. Calls ``.to_dict()`` on each result."""
+        converted = [r.to_dict() if r else {} for r in entities_list]
+        return cls.build_batch(nlp, texts, entities_list=converted, entity_mapper=OPENMED_MAPPER, **kwargs)
+
+    def with_gliner(self, entities: List[Any], alignment_mode: str = "strict") -> "DocBuilder":
+        """Add GLiNER entities. Output of ``model.predict_entities()`` passed directly."""
+        return self.with_entities(entities, GLINER_MAPPER, alignment_mode)
+
+    def with_transformers(self, entities: List[Any], alignment_mode: str = "strict") -> "DocBuilder":
+        """Add HuggingFace NER pipeline entities. Supports both ``entity`` and ``entity_group`` keys."""
+        return self.with_entities(entities, HF_NER_MAPPER, alignment_mode)
+
+    def with_gliner2(self, result: Dict[str, Any], alignment_mode: str = "strict") -> "DocBuilder":
+        """Add GLiNER2 entities. Pass the dict returned by ``extract_entities()`` directly."""
+        return self.with_entities(result, GLINER2_MAPPER, alignment_mode)
+
+    def with_openmed(self, result: Any, alignment_mode: str = "strict") -> "DocBuilder":
+        """Add OpenMed entities. Calls ``.to_dict()`` on the PredictionResult before mapping."""
+        return self.with_entities(result.to_dict() if result else {}, OPENMED_MAPPER, alignment_mode)
 
     def with_context_words(self, context_words: List[str]) -> "DocBuilder":
         """Add _context to the doc with the provided context words."""

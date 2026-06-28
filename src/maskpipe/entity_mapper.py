@@ -76,15 +76,18 @@ class Gliner2Mapper(BaseEntityMapper):
         if "entities" in result:
             result: Dict[str, Dict[str, Any]] = result["entities"]
             
-        entities = [
-            EntityResult(
-                start=cast(int, entity[self.start]),
-                end=cast(int, entity[self.end]),
-                label=label_key,
-                score=cast(float, entity.get(self.score, default_score))
-            )
-            for label_key, entity in result.items()
-        ]
+        entities = []
+        for label_key, value in result.items():
+            items = value if isinstance(value, list) else [value]
+            for entity in items:
+                if not isinstance(entity, dict):
+                    continue
+                entities.append(EntityResult(
+                    start=cast(int, entity[self.start]),
+                    end=cast(int, entity[self.end]),
+                    label=label_key,
+                    score=cast(float, entity.get(self.score, default_score))
+                ))
         return entities
 
 # Pre-configured constants

@@ -10,7 +10,14 @@ from typing import (
 )
 from spacy.language import Language
 from .doc_builder import DocBuilder
-from .entity_mapper import BaseEntityMapper, EntityResult
+from .entity_mapper import (
+    BaseEntityMapper,
+    EntityResult,
+    GLINER_MAPPER,
+    GLINER2_MAPPER,
+    HF_NER_MAPPER,
+    OPENMED_MAPPER,
+)
 
 DOC_ANALYZER_DEFAULT_SPANS_KEY = "sc"
 
@@ -89,6 +96,26 @@ class StructuredAnalyzer:
             results[column] = column_analysis
 
         return results
+
+    def analyze_gliner(self, data: Dict[str, List[Any]], batch_extractor: Callable[[List[str]], List[Any]], **kwargs) -> "Dict[str, ColumnAnalysis]":
+        """Analyze with GLiNER. ``batch_extractor`` should return raw ``predict_entities()`` output."""
+        return self.analyze(data, batch_extractor=batch_extractor, entity_mapper=GLINER_MAPPER, **kwargs)
+
+    def analyze_transformers(self, data: Dict[str, List[Any]], batch_extractor: Callable[[List[str]], List[Any]], **kwargs) -> "Dict[str, ColumnAnalysis]":
+        """Analyze with HuggingFace NER pipeline output."""
+        return self.analyze(data, batch_extractor=batch_extractor, entity_mapper=HF_NER_MAPPER, **kwargs)
+
+    def analyze_gliner2(self, data: Dict[str, List[Any]], batch_extractor: Callable[[List[str]], List[Any]], **kwargs) -> "Dict[str, ColumnAnalysis]":
+        """Analyze with GLiNER2. Unwraps the outer list from each result before mapping."""
+        def _extract(texts: List[str]) -> List[Any]:
+            return [r[0] if r else {} for r in batch_extractor(texts)]
+        return self.analyze(data, batch_extractor=_extract, entity_mapper=GLINER2_MAPPER, **kwargs)
+
+    def analyze_openmed(self, data: Dict[str, List[Any]], batch_extractor: Callable[[List[str]], List[Any]], **kwargs) -> "Dict[str, ColumnAnalysis]":
+        """Analyze with OpenMed. Calls ``.to_dict()`` on each PredictionResult before mapping."""
+        def _extract(texts: List[str]) -> List[Any]:
+            return [r.to_dict() if r else {} for r in batch_extractor(texts)]
+        return self.analyze(data, batch_extractor=_extract, entity_mapper=OPENMED_MAPPER, **kwargs)
 
     def _process_doc(self, doc) -> tuple[str, List[EntityResult]]:
         """Single-pass extraction of cell label and entities."""

@@ -30,6 +30,10 @@ anonymizer = "maskpipe.anonymizer:Anonymizer"
 dev = [
     "marimo",
     "pytest",
+    "gliner>=0.2",
+    "gliner2>=0.1",
+    "transformers>=4.0",
+    "openmed>=0.1",
 ]
 codegen = [
     "presidio-analyzer>=2.2",

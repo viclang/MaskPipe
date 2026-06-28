@@ -45,7 +45,6 @@ def _():
         Dict,
         DocBuilder,
         Faker,
-        GLINER_MAPPER,
         GLiNER,
         List,
         PipelineBuilder,
@@ -111,15 +110,9 @@ def _(Any, Dict, List, model, text_area):
 
 
 @app.cell
-def _(
-    DocBuilder,
-    GLINER_MAPPER,
-    nlp,
-    predicted_entities: "List[Dict[str, Any]]",
-    text,
-):
+def _(DocBuilder, nlp, predicted_entities: "List[Dict[str, Any]]", text):
     doc = (DocBuilder(nlp, text)
-        .with_entities(predicted_entities, entity_mapper=GLINER_MAPPER)
+        .with_gliner(predicted_entities)
         .build())
 
     doc = nlp(doc)
