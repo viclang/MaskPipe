@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import re
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional
 
-from spacy.tokens import Doc, Span
-
-from maskpipe.entities.entity import ContextPattern, Entity, Pattern
+from maskpipe.entities.entity import ContextPattern, Pattern
 
 try:
-    from presidio_analyzer import EntityRecognizer, PatternRecognizer
+    from presidio_analyzer import PatternRecognizer
 except ImportError:
     raise ImportError(
         "presidio-analyzer is required to use presidio_converter. "
@@ -17,10 +15,7 @@ except ImportError:
 
 
 class PresidioConverter:
-    """Convert Presidio recognizers to maskpipe Entity objects.
-
-    Supports both PatternRecognizer (translated to spaCy token patterns)
-    and EntityRecognizer (bridged via custom_matcher using analyze()).
+    """Translate Presidio recognizer internals to maskpipe primitives.
 
     Requires: uv sync --group codegen
 
@@ -40,31 +35,6 @@ class PresidioConverter:
         self.context_boost = context_boost
         self.alignment_mode = alignment_mode
         self.min_score = min_score
-
-    def convert(self, recognizer: EntityRecognizer) -> Entity:
-        """Convert a Presidio recognizer to a maskpipe Entity."""
-        if isinstance(recognizer, PatternRecognizer):
-            return self._convert_pattern_recognizer(recognizer)
-        return self._convert_entity_recognizer(recognizer)
-
-    def convert_all(self, recognizers: List[EntityRecognizer]) -> List[Entity]:
-        """Convert a list of Presidio recognizers to maskpipe Entity objects."""
-        return [self.convert(r) for r in recognizers]
-
-    def _convert_pattern_recognizer(self, recognizer: PatternRecognizer) -> Entity:
-        patterns: List[Pattern] = []
-        for p in recognizer.patterns:
-            patterns.extend(self.translate_pattern(p.regex, p.score))
-
-        context_patterns = self.translate_context(recognizer.context)
-        validator = self._wrap_validator(recognizer)
-
-        return Entity(
-            label=recognizer.supported_entities[0],
-            patterns=patterns or None,
-            validator=validator,
-            context_patterns=context_patterns,
-        )
 
     # Matches separator char classes that cause spaCy's tokenizer to split:
     #   Group 1: char class with leading hyphen [- .], space [a b], or slash [/.]
@@ -186,24 +156,6 @@ class PresidioConverter:
                 return False
         return True
 
-    def _wrap_validator(self, recognizer: PatternRecognizer) -> Optional[Callable[[Span], bool]]:
-        # Presidio has two separate validation hooks that are both called in analyze():
-        # - validate_result: positive validation (returns True/False/None)
-        # - invalidate_result: negative validation (returns True to discard)
-        # They don't chain through each other, so we must call both.
-        has_validate = type(recognizer).validate_result is not PatternRecognizer.validate_result
-        has_invalidate = type(recognizer).invalidate_result is not PatternRecognizer.invalidate_result
-        if not has_validate and not has_invalidate:
-            return None
-
-        def _validator(span: Span, _r: PatternRecognizer = recognizer) -> bool:
-            if _r.invalidate_result(span.text):
-                return False
-            result = _r.validate_result(span.text)
-            return result if result is not None else True
-
-        return _validator
-
     def translate_context(
         self, context: Optional[List[str]]
     ) -> Optional[List[ContextPattern]]:
@@ -223,24 +175,3 @@ class PresidioConverter:
         elif single_words:
             patterns.insert(0, {"pattern": [{"LEMMA": {"IN": single_words}}], "score": self.context_boost})
         return patterns or None
-
-    def _convert_entity_recognizer(self, recognizer: EntityRecognizer) -> Entity:
-        entities = recognizer.supported_entities
-        alignment_mode = self.alignment_mode
-        min_score = self.min_score
-
-        def _matcher(doc: Doc) -> List[Tuple[int, int, float]]:
-            results = recognizer.analyze(doc.text, entities=entities, nlp_artifacts=None)  # ty:ignore[invalid-argument-type]
-            spans = []
-            for r in results:
-                if r.score < min_score:
-                    continue
-                span = doc.char_span(r.start, r.end, alignment_mode=alignment_mode)
-                if span:
-                    spans.append((span.start, span.end, r.score))
-            return spans
-
-        return Entity(
-            label=recognizer.supported_entities[0],
-            custom_matcher=_matcher,
-        )

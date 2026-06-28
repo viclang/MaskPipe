@@ -19,7 +19,7 @@ from .ast_utils import (
     deduplicate,
 )
 from .extraction import SelfMethodInliner, PresidioReferenceInliner
-from .source_cleanup import (
+from .presidio_fixes import (
     RECOGNIZER_RESULT_FALLBACK,
     replace_result_objects_with_tuples,
     remove_uncalled_functions,

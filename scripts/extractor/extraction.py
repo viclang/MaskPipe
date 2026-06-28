@@ -13,7 +13,7 @@ from presidio_analyzer import RecognizerResult as _RC
 logger = logging.getLogger(__name__)
 
 from .ast_utils import (
-    _is_presidio,
+    is_presidio,
     SelfAttrInliner,
     GlobalConstantInliner,
     local_names,
@@ -23,7 +23,7 @@ from .ast_utils import (
     remove_docstring,
     deduplicate,
 )
-from .source_cleanup import wrap_bool_returns, remove_unused_imports
+from .presidio_fixes import wrap_bool_returns, remove_unused_imports
 
 class SelfMethodInliner(ast.NodeTransformer):
     """Replace self.method(args) with extracted helper _method(args)."""
@@ -91,7 +91,7 @@ class PresidioReferenceInliner(ast.NodeTransformer):
         self.generic_visit(node)
         if isinstance(node.value, ast.Name):
             cls_obj = self._globals.get(node.value.id)
-            if cls_obj is not None and _is_presidio(cls_obj) and isinstance(cls_obj, type):
+            if cls_obj is not None and is_presidio(cls_obj) and isinstance(cls_obj, type):
                 try:
                     value = getattr(cls_obj, node.attr)
                     if not callable(value):
@@ -105,7 +105,7 @@ class PresidioReferenceInliner(ast.NodeTransformer):
 
         if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
             cls_obj = self._globals.get(node.func.value.id)
-            if cls_obj is not None and _is_presidio(cls_obj):
+            if cls_obj is not None and is_presidio(cls_obj):
                 method_name = node.func.attr
                 if method_name == "remove_duplicates" and node.args:
                     return node.args[0]
@@ -136,7 +136,7 @@ class PresidioReferenceInliner(ast.NodeTransformer):
 
         if isinstance(node.func, ast.Name):
             cls_obj = self._globals.get(node.func.id)
-            if cls_obj is not None and _is_presidio(cls_obj) and isinstance(cls_obj, type):
+            if cls_obj is not None and is_presidio(cls_obj) and isinstance(cls_obj, type):
                 if cls_obj is _RC:
                     replacement_name = "_RecognizerResult"
                 else:

@@ -8,7 +8,8 @@ import logging
 from presidio_analyzer import PatternRecognizer
 from .ast_utils import deduplicate
 from .extraction import extract_instance_method
-from .source_cleanup import fix_blank_lines, fold_helpers_into_validator, has_super_calls, normalize_bool_tristate, remove_unused_imports, replace_util_functions, sort_set_literals
+from .normalize import sort_set_literals
+from .presidio_fixes import fix_blank_lines, fold_helpers_into_validator, has_super_calls, normalize_bool_tristate, remove_unused_imports, replace_util_functions
 
 logger = logging.getLogger(__name__)
 

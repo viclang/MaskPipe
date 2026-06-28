@@ -11,6 +11,7 @@ from presidio_converter import PresidioConverter
 from presidio_analyzer import EntityRecognizer, PatternRecognizer
 
 from extractor import extract_custom_matcher, extract_validator
+from maskpipe.entities.entity import ContextPattern, Pattern
 
 T = TypeVar("T")
 
@@ -29,12 +30,12 @@ class IdentityComponent:
 
 @dataclass
 class PatternsComponent:
-    patterns: list[dict]
+    patterns: list[Pattern]
 
 
 @dataclass
 class ContextComponent:
-    context_patterns: list[dict]
+    context_patterns: list[ContextPattern]
 
 
 @dataclass
@@ -119,11 +120,14 @@ def _attach_analyze(recognizer: EntityRecognizer, converter: PresidioConverter, 
     entity.attach(AnalyzeComponent(src=src, imports=imports, alignment_mode=converter.alignment_mode))
 
 
+GENERATED_MARKER = '"""Entity generated from presidio_analyzer.'
+
+
 # ---------------------------------------------------------------------------
 # Build — run applicable systems over a recognizer
 # ---------------------------------------------------------------------------
 
-def build(recognizer: EntityRecognizer, converter: PresidioConverter) -> RecognizerEntity:
+def _build(recognizer: EntityRecognizer, converter: PresidioConverter) -> RecognizerEntity:
     entity = RecognizerEntity()
     _attach_identity(recognizer, entity)
     _attach_context(recognizer, converter, entity)
@@ -141,4 +145,4 @@ def build(recognizer: EntityRecognizer, converter: PresidioConverter) -> Recogni
 
 def generate(recognizer: EntityRecognizer, converter: PresidioConverter) -> str:
     from render import render
-    return render(build(recognizer, converter))
+    return render(_build(recognizer, converter))

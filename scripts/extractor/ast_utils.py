@@ -9,7 +9,7 @@ import sys
 _BUILTINS = frozenset(dir(builtins))
 logger = logging.getLogger(__name__)
 
-def _is_presidio(obj) -> bool:
+def is_presidio(obj) -> bool:
     mod = inspect.getmodule(obj)
     return mod is not None and mod.__name__.startswith("presidio_analyzer")
 
@@ -55,7 +55,7 @@ class GlobalConstantInliner(ast.NodeTransformer):
         if not isinstance(node.ctx, ast.Load) or node.id in self._local:
             return node
         obj = self._globals.get(node.id)
-        if obj is None or _is_presidio(obj) or callable(obj) or inspect.ismodule(obj) or isinstance(obj, type):
+        if obj is None or is_presidio(obj) or callable(obj) or inspect.ismodule(obj) or isinstance(obj, type):
             return node
         if inspect.getmodule(obj) is not None:
             return node
@@ -95,7 +95,7 @@ def resolve_imports(names: set[str], globals_: dict) -> list[str]:
     imports = []
     for name in sorted(names):
         obj = globals_.get(name)
-        if obj is None or _is_presidio(obj):
+        if obj is None or is_presidio(obj):
             continue
         if inspect.ismodule(obj):
             module_name = obj.__name__
@@ -125,7 +125,7 @@ def drop_presidio_return_type(func_def: ast.FunctionDef, globals_: dict) -> None
     if func_def.returns is None:
         return
     for node in ast.walk(func_def.returns):
-        if isinstance(node, ast.Name) and _is_presidio(globals_.get(node.id)):
+        if isinstance(node, ast.Name) and is_presidio(globals_.get(node.id)):
             func_def.returns = None
             return
 
