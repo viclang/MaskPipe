@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -29,4 +30,4 @@ jobs:
         run: uv build
 
       - name: Publish
-        run: uv publish --token "${{ secrets.PYPI_API_TOKEN }}"
+        run: uv publish --trusted-publishing always
