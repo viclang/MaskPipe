@@ -1,5 +1,6 @@
 import random
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from typing import (
     Any,
     Callable,
@@ -11,6 +12,7 @@ from typing import (
     TypedDict,
 )
 from spacy.language import Language
+from spacy.tokens import Span
 from .constants import SPANS_KEY
 from .doc_builder import DocBuilder
 from .entity_mapper import (
@@ -38,6 +40,9 @@ class ColumnAnalysis(TypedDict):
     entity_distribution: Dict[str, LabelStats]
     entities: NotRequired[List[EntityResult]]
 
+SpansFilterFunc = Callable[[Iterable[Span]], Iterable[Span]]
+
+
 class StructuredAnalyzer:
 
     def __init__(
@@ -46,11 +51,13 @@ class StructuredAnalyzer:
         *,
         label_mapping: Optional[Dict[str, str]] = None,
         spans_key: str = SPANS_KEY,
+        spans_filter: SpansFilterFunc = hierarchical_merge_filter,
         default_score: float = 0.6,
     ):
         self.nlp = nlp
         self.label_mapping = label_mapping
         self.spans_key = spans_key
+        self.spans_filter = spans_filter
         self.default_score = default_score
 
     def analyze(
@@ -201,7 +208,7 @@ class StructuredAnalyzer:
             ents = doc.ents
         else:
             raw_spans = doc.spans.get(self.spans_key, [])
-            ents = hierarchical_merge_filter(raw_spans) if raw_spans else []
+            ents = self.spans_filter(raw_spans) if raw_spans else []
         if not ents:
             return set(), []
 
