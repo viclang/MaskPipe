@@ -4,7 +4,6 @@ from spacy.tokens import Span
 
 from .entity import Entity
 
-
 def _valid_mac(span: Span) -> bool:
     """
     Validate MAC address format (48-bit address with hex groups).
@@ -31,7 +30,6 @@ def _valid_mac(span: Span) -> bool:
     
     return True
 
-
 MAC_ADDRESS = Entity(
     label="MAC_ADDRESS",
     patterns=[
@@ -43,5 +41,11 @@ MAC_ADDRESS = Entity(
     validator=_valid_mac,
     context_patterns=[
         {"pattern": [{"LEMMA": {"IN": ["mac", "mac-adres", "macaddress", "hardware", "physical"]}}]},
+        {"pattern": [{"LEMMA": "mac"}, {"LEMMA": "address"}]},
+        {"pattern": [{"LEMMA": "mac"}, {"LEMMA": "adres"}]},
+        {"pattern": [{"LEMMA": "hardware"}, {"LEMMA": "address"}]},
+        {"pattern": [{"LEMMA": "hardware"}, {"LEMMA": "adres"}]},
+        {"pattern": [{"LEMMA": "physical"}, {"LEMMA": "address"}]},
+        {"pattern": [{"LEMMA": "fysiek"}, {"LEMMA": "adres"}]},
     ]
 )

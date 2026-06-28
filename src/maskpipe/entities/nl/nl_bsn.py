@@ -20,7 +20,7 @@ def _elf_proef(span: Span) -> bool:
 
     return total % 11 == 0
 
-BSN = Entity(
+NL_BSN = Entity(
     label="BSN",
     patterns=[
         {"score": 0.5, "pattern": [{"LENGTH":  8, "IS_DIGIT": True}]},

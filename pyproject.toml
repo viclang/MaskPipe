@@ -31,6 +31,12 @@ dev = [
     "marimo",
     "pytest",
 ]
+codegen = [
+    "presidio-analyzer>=2.2",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.ty.environment]
+extra-paths = ["scripts"]

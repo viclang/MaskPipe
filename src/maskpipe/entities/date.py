@@ -47,7 +47,6 @@ DATE = Entity(
         # DD MM YY
         {"score": 0.5, "pattern": [{"TEXT": {"REGEX": rf"\b{DD}\b"}}, {"TEXT": {"REGEX": rf"\b{MM}\b"}}, {"TEXT": {"REGEX": rf"\b{YY}\b"}}]},
 
-
         # DD-MM-YY or DD/MM/YY or DD.MM.YY
         {"score": 0.6, "pattern": [{"TEXT": {"REGEX": {"IN": [
             rf"\b{DD}\-{MM}\-{YY}\b",

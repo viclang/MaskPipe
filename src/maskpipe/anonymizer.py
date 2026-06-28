@@ -61,7 +61,7 @@ class Anonymizer(Pipe):
         Process a document and attach masked text under `doc._.masked`.
         The original document is returned unchanged.
         """
-        doc._.masked: str = self._make_masked_doc(doc)
+        doc._.masked = self._make_masked_doc(doc)
         return doc
 
     def add_redactors(
@@ -82,7 +82,7 @@ class Anonymizer(Pipe):
             If no replacement is registered for a label, the default replacement
             is ``[LABEL]``.
         """
-        self._redactors.update(redactors)
+        self._redactors.update({k: self._normalize_redactor(v) for k, v in redactors.items()})
 
     def remove(self, label: str) -> None:
         """
@@ -97,7 +97,7 @@ class Anonymizer(Pipe):
 
     def clear(self) -> None:
         """Remove all registered redactors."""
-        self._redactors: Dict[str, Union[str, NoArgReplacement, TextReplacement]] = {}
+        self._redactors: Dict[str, TextReplacement] = {}
 
     def _get_spans(self, doc: Doc) -> Iterable[Span]:
         if self.style == "ent":
@@ -105,32 +105,28 @@ class Anonymizer(Pipe):
         spans = list(doc.spans.get(self.spans_key, []))
         return self.spans_filter(spans)
 
+    @staticmethod
+    def _normalize_redactor(redactor: Union[str, NoArgReplacement, TextReplacement]) -> TextReplacement:
+        if isinstance(redactor, str):
+            fixed = redactor
+            return lambda _: fixed
+        sig = inspect.signature(redactor)
+        params = [param for param in sig.parameters.values() if param.name != "self"]
+        if not params:
+            generator = cast(NoArgReplacement, redactor)
+            return lambda _: generator()
+        if len(params) == 1:
+            return cast(TextReplacement, redactor)
+        raise TypeError(
+            f"Redactor must be a str or a callable taking zero or one positional argument, "
+            f"got {len(params)} parameters"
+        )
+
     def _apply_redactor(self, label: str, text: str) -> str:
         redactor = self._redactors.get(label)
         if redactor is None:
             return f"[{label.upper()}]"
-
-        if isinstance(redactor, str):
-            return redactor
-
-        sig = inspect.signature(redactor)
-        params = tuple(sig.parameters.values())
-
-        if params and params[0].name == "self":
-            params = params[1:]
-
-        if not params:
-            no_arg_redactor = cast(NoArgReplacement, redactor)
-            return no_arg_redactor()
-
-        if len(params) == 1:
-            text_redactor = cast(TextReplacement, redactor)
-            return text_redactor(text)
-
-        raise TypeError(
-            f"Replacement for label {label!r} must be a str or a callable "
-            "taking zero or one positional argument"
-        )
+        return redactor(text)
 
     def _make_masked_doc(self, original_doc: Doc) -> str:
         sensitive_spans = sorted(self._get_spans(original_doc), key=lambda span: span.start)
@@ -152,7 +148,7 @@ class Anonymizer(Pipe):
 
             current_span = sensitive_spans[span_index]
             replacement_tokens = self._apply_redactor(current_span.label_, current_span.text)
-            current_span._.replacement: str = replacement_tokens
+            current_span._.replacement = replacement_tokens
 
             replacement_doc = self.nlp.tokenizer(replacement_tokens)
             for new_token in replacement_doc:
@@ -212,7 +208,7 @@ class Anonymizer(Pipe):
             Pickled redactors dictionary.
         """
         serializers = {"redactors": lambda: srsly.pickle_dumps(self._redactors)}
-        return util.to_bytes(serializers, exclude)  # ty:ignore[invalid-argument-type]
+        return util.to_bytes(serializers, exclude)
 
     def from_disk(
         self,

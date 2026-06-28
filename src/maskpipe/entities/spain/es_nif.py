@@ -1,0 +1,42 @@
+"""Entity generated from presidio_analyzer.predefined_recognizers.country_specific.spain.es_nif_recognizer.EsNifRecognizer."""
+
+# BEGIN GENERATED: imports
+from maskpipe.entities.util import sanitize_value
+from spacy.tokens import Span
+from maskpipe.entities.entity import ContextPattern, Entity, Pattern
+# END GENERATED: imports
+
+# BEGIN GENERATED: patterns
+_PATTERNS: list[Pattern] = [
+    {"score": 0.5, "pattern": [{"TEXT": {"REGEX": r"\b[0-9]?[0-9]{7}[-]?[A-Z]\b"}}]},
+    {"score": 0.5, "pattern": [
+        {"TEXT": {"REGEX": r"\b[0-9]?[0-9]{7}\b"}},
+        {"TEXT": "-"},
+        {"TEXT": {"REGEX": r"\b[A-Z]\b"}},
+    ]},
+]
+# END GENERATED: patterns
+
+# BEGIN GENERATED: context_patterns
+_CONTEXT_PATTERNS: list[ContextPattern] = [
+    {"pattern": [{"LEMMA": {"IN": ["dni", "nif", "identificación"]}}], "score": 0.35},
+    {"pattern": [{"LEMMA": "documento"}, {"LEMMA": "nacional"}, {"LEMMA": "de"}, {"LEMMA": "identidad"}], "score": 0.35},
+]
+# END GENERATED: context_patterns
+
+# BEGIN GENERATED: validator
+def _validator(span: Span) -> bool:
+    pattern_text = span.text
+    pattern_text = sanitize_value(pattern_text, [('-', ''), (' ', '')])
+    letter = pattern_text[-1]
+    number = int(''.join(filter(str.isdigit, pattern_text)))
+    letters = 'TRWAGMYFPDXBNJZSQVHLCKE'
+    return letter == letters[number % 23]
+# END GENERATED: validator
+
+ES_NIF = Entity(
+    label="ES_NIF",
+    patterns=_PATTERNS,
+    validator=_validator,
+    context_patterns=_CONTEXT_PATTERNS,
+)
