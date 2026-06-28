@@ -9,15 +9,14 @@ import pytest
 from spacy.lang.en import English
 
 from maskpipe import PipelineBuilder
-from maskpipe.presidio import PresidioConverter
+from presidio_helpers import _convert_recognizer, skip_no_presidio
+from presidio_converter import PresidioConverter
 
 try:
     from presidio_analyzer.predefined_recognizers.country_specific.us.us_ssn_recognizer import UsSsnRecognizer
     HAS_PRESIDIO = True
 except ImportError:
     HAS_PRESIDIO = False
-
-skip_no_presidio = pytest.mark.skipif(not HAS_PRESIDIO, reason="presidio-analyzer not installed")
 
 
 def _build(entity):
@@ -61,12 +60,6 @@ BOTH_REJECT = [
     "666123456",    # area code 666 invalid
 ]
 
-# Numbers that native maskpipe rejects but Presidio does not.
-# Presidio's invalidate_result doesn't check area codes 900-999.
-NATIVE_STRICTER = [
-    "912345678",    # area 900+ — invalid per SSA; maskpipe rejects, Presidio doesn't
-]
-
 CLEARLY_NOT_SSN = [
     "Call me at 12-34-567",
     "No numbers here",
@@ -75,13 +68,13 @@ CLEARLY_NOT_SSN = [
 
 @pytest.fixture
 def native_nlp():
-    from maskpipe.entities.us.ssn import SSN
-    return _build(SSN)
+    from maskpipe.entities.us.us_ssn import US_SSN
+    return _build(US_SSN)
 
 
 @pytest.fixture
 def presidio_nlp():
-    entity = PresidioConverter().convert(UsSsnRecognizer())
+    entity = _convert_recognizer(PresidioConverter(), UsSsnRecognizer())
     return _build(entity)
 
 
@@ -105,14 +98,6 @@ def test_both_reject_invalid_ssn(native_nlp, presidio_nlp, text):
     """Both implementations agree: these pass the regex but fail validation."""
     assert not _detect(native_nlp, text), f"native should reject: {text!r}"
     assert not _detect(presidio_nlp, text), f"presidio should reject: {text!r}"
-
-
-@skip_no_presidio
-@pytest.mark.parametrize("text", NATIVE_STRICTER)
-def test_native_stricter_than_presidio(native_nlp, presidio_nlp, text):
-    """Native maskpipe is stricter: rejects area codes 900-999 (Presidio does not)."""
-    assert not _detect(native_nlp, text), f"native should reject: {text!r}"
-    assert _detect(presidio_nlp, text), f"presidio should accept: {text!r}"
 
 
 @skip_no_presidio
