@@ -38,6 +38,21 @@ class ContextEnhancer(Pipe):
         context_window: Tuple[int, int] = (5, 3),
         allow_dependency_link: bool = True,
     ):
+        """
+        Args:
+            nlp: The spaCy Language object.
+            name: Component name registered in the pipeline.
+            spans_key: Key under ``doc.spans`` to read and write spans.
+            default_score: Score boost added to a span when a context pattern
+                matches. The result is clamped to ``min_enhanced_score``.
+            min_enhanced_score: Floor score applied after a context match,
+                regardless of the original span score.
+            context_window: ``(before, after)`` token counts defining the
+                window around each span in which context patterns are searched.
+            allow_dependency_link: If ``True``, a dependency arc between the
+                span and a match token also counts as a context hit, even when
+                the match falls outside the token window.
+        """
         self.nlp = nlp
         self.name = name
         self.default_score = default_score

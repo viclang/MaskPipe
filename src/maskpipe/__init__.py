@@ -8,6 +8,7 @@ from .doc_builder import DocBuilder
 from .pipeline_builder import PipelineBuilder
 from .recognizer import Recognizer
 from .structured_analyzer import StructuredAnalyzer
+from .structured_anonymizer import StructuredAnonymizer
 from .entity_mapper import (
     BaseEntityMapper,
     EntityMapper,
@@ -42,6 +43,7 @@ __all__ = [
     "PipelineBuilder",
     "Recognizer",
     "StructuredAnalyzer",
+    "StructuredAnonymizer",
     "BaseEntityMapper",
     "EntityMapper",
     "Gliner2Mapper",

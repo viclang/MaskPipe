@@ -29,6 +29,16 @@ class DocBuilder:
         spans_key: str = SPANS_KEY,
         default_score: float = 0.5,
     ):
+        """
+        Args:
+            nlp: The spaCy Language object used to tokenize *text*.
+            text: The raw text for this document.
+            label_mapping: Optional mapping to rename entity labels on ingestion
+                (e.g. ``{"PERSON": "persoon"}``).
+            spans_key: Key under ``doc.spans`` where entity spans are stored.
+            default_score: Confidence score used for entities that do not carry
+                an explicit score in their source data.
+        """
         self.nlp = nlp
         self.doc = self.nlp._ensure_doc(text)
         self.spans_key = spans_key

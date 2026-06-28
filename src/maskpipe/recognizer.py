@@ -58,7 +58,13 @@ DEFAULT_RECOGNIZER_CONFIG = {
 
 @Language.factory("recognizer", assigns=["doc.spans"], default_config=DEFAULT_RECOGNIZER_CONFIG,)
 class Recognizer(Pipe):
-    
+    """spaCy pipeline component that matches text patterns and writes spans to ``doc.spans[spans_key]``.
+
+    Supports token patterns (spaCy ``Matcher``), phrase patterns
+    (``PhraseMatcher``), and custom matcher functions. Duplicate spans at the
+    same character offsets are deduplicated, keeping the highest-scoring match.
+    """
+
     def __init__(
         self,
         nlp: Language,
@@ -70,6 +76,21 @@ class Recognizer(Pipe):
         validate_patterns: bool = False,
         overwrite: bool = False,
     ):
+        """
+        Args:
+            nlp: The spaCy Language object.
+            name: Component name registered in the pipeline.
+            spans_key: Key under ``doc.spans`` where matched spans are stored.
+            phrase_matcher_attr: Token attribute used by ``PhraseMatcher``
+                (e.g. ``"LOWER"``). ``None`` uses the default (``ORTH``).
+            matcher_fuzzy_compare: Comparison function passed to ``Matcher``
+                for fuzzy token matching.
+            default_score: Confidence score assigned to patterns that do not
+                specify their own score. Clamped to ``[0.0, 1.0]``.
+            validate_patterns: If ``True``, spaCy validates patterns on add.
+            overwrite: If ``True``, replace existing spans in ``doc.spans``
+                instead of extending them.
+        """
         self.nlp = nlp
         self.name = name
         self.spans_key = spans_key

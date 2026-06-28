@@ -41,6 +41,11 @@ class ColumnAnalysis(TypedDict):
 SpansFilterFunc = Callable[[Iterable[Span]], Iterable[Span]]
 
 class StructuredAnalyzer:
+    """Detect PII columns in tabular data by running the spaCy pipeline over sampled cell values.
+
+    Each column is scored by ``coverage × average entity confidence`` for the
+    winning label. Columns below the threshold are labeled ``NON_PII``.
+    """
 
     def __init__(
         self,
@@ -51,6 +56,18 @@ class StructuredAnalyzer:
         spans_filter: SpansFilterFunc = hierarchical_merge_filter,
         default_score: float = 0.6,
     ):
+        """
+        Args:
+            nlp: Configured spaCy pipeline used to process cell values.
+            label_mapping: Optional mapping to rename entity labels before
+                analysis (e.g. ``{"PERSON": "persoon"}``).
+            spans_key: Key under ``doc.spans`` to read from when ``doc.ents``
+                is empty (fallback path for pipelines without ConflictResolver).
+            spans_filter: Applied on the ``doc.spans`` fallback path to resolve
+                overlapping spans before scoring.
+            default_score: Confidence score used for entities that do not carry
+                a ``span._.score`` extension value.
+        """
         self.nlp = nlp
         self.label_mapping = label_mapping
         self.spans_key = spans_key

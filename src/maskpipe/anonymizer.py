@@ -48,6 +48,15 @@ class Anonymizer(Pipe):
         spans_key: str = SPANS_KEY,
         spans_filter: SpansFilterFunc = hierarchical_merge_filter,
     ):
+        """
+        Args:
+            nlp: The spaCy Language object; used to tokenize replacement text.
+            name: Component name registered in the pipeline.
+            spans_key: Key under ``doc.spans`` used as fallback when
+                ``doc.ents`` is empty (e.g. when ``ConflictResolver`` is absent).
+            spans_filter: Applied to ``doc.spans`` on the fallback path to
+                enforce the non-overlap invariant before redaction.
+        """
         self.nlp = nlp
         self.name = name
         self.spans_key = spans_key
